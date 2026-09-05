@@ -3,7 +3,9 @@ import {
   exists,
   mkdir,
   readTextFile,
+  remove,
   rename,
+  stat,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { load } from '@tauri-apps/plugin-store'
@@ -92,19 +94,66 @@ async function seedMissing(folder: string): Promise<void> {
   }
 }
 
+export interface FileStamp {
+  mtimeMs: number
+  sha256: string
+}
+
+/** Identity of a file's contents as Nest last saw it on disk. */
+const stamps = new Map<string, FileStamp>()
+
+export async function sha256(text: string): Promise<string> {
+  const bytes = new TextEncoder().encode(text)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function stampFor(path: string, text: string): Promise<FileStamp> {
+  const info = await stat(path)
+  return { mtimeMs: info.mtime?.getTime() ?? 0, sha256: await sha256(text) }
+}
+
+async function readStamped(path: string): Promise<string> {
+  const text = await readTextFile(path)
+  stamps.set(path, await stampFor(path, text))
+  return text
+}
+
 export async function readWorkspaceFiles(folder: string): Promise<FilesState> {
   await seedMissing(folder)
-  const inbox = await readTextFile(await pathFor(folder, 'inbox'))
-  const projects = await readTextFile(await pathFor(folder, 'projects'))
+  const inbox = await readStamped(await pathFor(folder, 'inbox'))
+  const projects = await readStamped(await pathFor(folder, 'projects'))
   return { inbox, projects }
 }
 
+export class StaleFileError extends Error {}
+
+/**
+ * Atomic write: temp file in the same directory, fsync-by-rename onto the
+ * target. Refuses if the file changed on disk since Nest last read it.
+ */
 export async function writeWorkspaceFile(
   folder: string,
   id: NestFileId,
   source: string,
 ): Promise<void> {
-  await writeTextFile(await pathFor(folder, id), source)
+  const target = await pathFor(folder, id)
+  const known = stamps.get(target)
+  if (known) {
+    const onDisk = await stampFor(target, await readTextFile(target))
+    if (onDisk.sha256 !== known.sha256) {
+      throw new StaleFileError(`${fileNameFor(id)} changed on disk since Nest read it`)
+    }
+  }
+  const tmp = `${target}.nest-tmp`
+  await writeTextFile(tmp, source)
+  try {
+    await rename(tmp, target)
+  } catch (err) {
+    await remove(tmp).catch(() => {})
+    throw err
+  }
+  stamps.set(target, await stampFor(target, source))
 }
 
 export async function writeWorkspaceFiles(
