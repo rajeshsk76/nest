@@ -8,3 +8,5 @@ logs
 .DS_Store
 .idea
 .cache
+src-tauri/target
+src-tauri/gen
