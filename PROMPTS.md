@@ -104,3 +104,4 @@ Update README “What works” and PLAN.md after each slice
 If a slice fights the round-trip, shrink the slice. Integrity beats features.
 Slices 1–4 shipped. Start with Slice 5 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
 END PROMPT
+
