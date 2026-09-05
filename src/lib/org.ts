@@ -95,6 +95,62 @@ export function formatOrgStamp(d = new Date(), active = false): string {
   return active ? `<${stamp}>` : `[${stamp}]`
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+/** Active Org date stamp without time: <YYYY-MM-DD Day> */
+export function formatOrgDate(parts: DateParts, active = true): string {
+  const date = new Date(parts.year, parts.month - 1, parts.day)
+  const y = String(parts.year).padStart(4, '0')
+  const m = String(parts.month).padStart(2, '0')
+  const d = String(parts.day).padStart(2, '0')
+  const stamp = `${y}-${m}-${d} ${WEEKDAYS[date.getDay()]}`
+  return active ? `<${stamp}>` : `[${stamp}]`
+}
+
+export function datePartsToInput(parts: DateParts | null | undefined): string {
+  if (!parts) return ''
+  const y = String(parts.year).padStart(4, '0')
+  const m = String(parts.month).padStart(2, '0')
+  const d = String(parts.day).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** Parse HTML date input (YYYY-MM-DD) into DateParts. */
+export function datePartsFromInput(value: string): DateParts | null {
+  const trimmed = value.trim()
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null
+  const probe = new Date(year, month - 1, day)
+  if (
+    probe.getFullYear() !== year ||
+    probe.getMonth() + 1 !== month ||
+    probe.getDate() !== day
+  ) {
+    return null
+  }
+  return { year, month, day }
+}
+
+export function makeActiveTimestamp(parts: DateParts): Timestamp {
+  return {
+    type: 'timestamp',
+    timestampType: 'active',
+    rawValue: formatOrgDate(parts, true),
+    start: {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+      hour: null,
+      minute: null,
+    },
+    end: null,
+  }
+}
+
 function planningOf(sectionChildren: OrgNode[]): Planning | null {
   const node = sectionChildren.find((c) => c.type === 'planning')
   return (node as Planning | undefined) ?? null
@@ -255,6 +311,88 @@ export function updateTagsInSource(
   return stringifyOrg(tree)
 }
 
+function sectionChildren(section: OrgNode): OrgNode[] | null {
+  if (!('children' in section) || !Array.isArray(section.children)) return null
+  return section.children as OrgNode[]
+}
+
+function findPlanning(section: OrgNode): Planning | null {
+  const kids = sectionChildren(section)
+  if (!kids) return null
+  return (kids.find((c) => c.type === 'planning') as Planning | undefined) ?? null
+}
+
+function ensurePlanning(section: OrgNode): Planning {
+  const kids = sectionChildren(section)
+  if (!kids) throw new Error('section has no children')
+  const existing = findPlanning(section)
+  if (existing) return existing
+
+  const planning: Planning = {
+    type: 'planning',
+    closed: null,
+    deadline: null,
+    scheduled: null,
+  }
+  const headlineIndex = kids.findIndex((c) => c.type === 'headline')
+  const insertAt = headlineIndex >= 0 ? headlineIndex + 1 : 0
+  kids.splice(insertAt, 0, planning)
+  return planning
+}
+
+function prunePlanningIfEmpty(section: OrgNode): void {
+  const kids = sectionChildren(section)
+  if (!kids) return
+  const index = kids.findIndex((c) => c.type === 'planning')
+  if (index < 0) return
+  const planning = kids[index] as Planning
+  if (planning.scheduled || planning.deadline || planning.closed) return
+  kids.splice(index, 1)
+}
+
+function setPlanningField(
+  source: string,
+  path: number[],
+  field: 'scheduled' | 'deadline',
+  date: DateParts | null,
+): string {
+  const tree = parseOrg(source)
+  const section = findSectionByPath(tree, path)
+  if (!section) return source
+  if (date) {
+    const planning = ensurePlanning(section)
+    planning[field] = makeActiveTimestamp(date)
+  } else {
+    const planning = findPlanning(section)
+    if (planning) planning[field] = null
+    prunePlanningIfEmpty(section)
+  }
+  return stringifyOrg(tree)
+}
+
+/**
+ * Set or clear SCHEDULED on a headline. Pass null to clear.
+ * Writes a real Org active timestamp via uniorg stringify.
+ */
+export function updateScheduledInSource(
+  source: string,
+  path: number[],
+  date: DateParts | null,
+): string {
+  return setPlanningField(source, path, 'scheduled', date)
+}
+
+/**
+ * Set or clear DEADLINE on a headline. Pass null to clear.
+ */
+export function updateDeadlineInSource(
+  source: string,
+  path: number[],
+  date: DateParts | null,
+): string {
+  return setPlanningField(source, path, 'deadline', date)
+}
+
 export function normalizeTag(tag: string): string | null {
   const cleaned = tag.trim().replace(/^:+|:+$/g, '')
   if (!cleaned) return null
@@ -276,7 +414,7 @@ export function normalizeTags(tags: string[]): string[] {
 
 /**
  * Parse optional Org priority / tags from capture text.
- * Accepts [#A]/#A]/:tag:` / `:tag1:tag2:` (usually at end).
+ * Accepts [#A]/#A`] / `:tag:` / `:tag1:tag2:` (usually at end).
  */
 export function parseCaptureTitle(text: string): ParsedCapture {
   let remaining = text.trim()
@@ -310,10 +448,14 @@ export function parseCaptureTitle(text: string): ParsedCapture {
   }
 }
 
+/**
+ * Append a TODO headline to inbox. Always writes an Emacs-friendly
+ * `:PROPERTIES:` / `:CREATED:` / `:END:` drawer (inactive timestamp).
+ */
 export function captureTodo(
   inboxSource: string,
   text: string,
-  options: { withTimestamp?: boolean; now?: Date } = {},
+  options: { now?: Date } = {},
 ): string {
   const cleaned = text.trim()
   if (!cleaned) return inboxSource
@@ -324,14 +466,14 @@ export function captureTodo(
   const tagCookie =
     parsed.tags.length > 0 ? ` :${parsed.tags.join(':')}:` : ''
 
-  const lines = [`* TODO${priorityCookie} ${title}${tagCookie}`]
-  if (options.withTimestamp !== false) {
-    const stamp = formatOrgStamp(options.now ?? new Date(), false)
-    lines.push(':PROPERTIES:')
-    lines.push(`:CREATED: ${stamp}`)
-    lines.push(':END:')
-  }
-  lines.push('')
+  const stamp = formatOrgStamp(options.now ?? new Date(), false)
+  const lines = [
+    `* TODO${priorityCookie} ${title}${tagCookie}`,
+    ':PROPERTIES:',
+    `:CREATED: ${stamp}`,
+    ':END:',
+    '',
+  ]
 
   const base = inboxSource.endsWith('\n') ? inboxSource : `${inboxSource}\n`
   return `${base}${lines.join('\n')}`
