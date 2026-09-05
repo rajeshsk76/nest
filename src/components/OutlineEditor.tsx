@@ -9,6 +9,7 @@ import {
   type Priority,
   type TodoKeyword,
 } from '../lib/org'
+import { MarkupText } from './MarkupText'
 import { PlanningEditor } from './PlanningEditor'
 
 interface OutlineEditorProps {
@@ -64,9 +65,8 @@ function PriorityBadge({
 }
 
 /**
- * Controlled title field that keeps a local draft while focused.
- * Parent re-parses Org on each keystroke; without a draft, React would
- * remount the value from the AST and jump the caret to the end.
+ * Outline title: rendered Org markup when idle; raw markers while editing.
+ * Local draft while focused keeps the caret stable across parent re-parses.
  */
 function HeadlineTitle({
   title,
@@ -78,21 +78,45 @@ function HeadlineTitle({
   onRename: (title: string) => void
 }) {
   const [draft, setDraft] = useState(title)
-  const focusedRef = useRef(false)
+  const [editing, setEditing] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!focusedRef.current) setDraft(title)
-  }, [title])
+    if (!editing) setDraft(title)
+  }, [title, editing])
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  if (!editing) {
+    return (
+      <div
+        className="headline-title headline-title-display"
+        role="button"
+        tabIndex={0}
+        onClick={() => setEditing(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setEditing(true)
+          }
+        }}
+        aria-label={`Headline level ${level}`}
+        title="Click to edit title (raw Org markers)"
+      >
+        <MarkupText text={title} />
+      </div>
+    )
+  }
 
   return (
     <input
+      ref={inputRef}
       className="headline-title"
       value={draft}
-      onFocus={() => {
-        focusedRef.current = true
-      }}
       onBlur={() => {
-        focusedRef.current = false
+        setEditing(false)
         if (draft !== title) onRename(draft)
         else setDraft(title)
       }}
@@ -100,6 +124,18 @@ function HeadlineTitle({
         const next = e.target.value
         setDraft(next)
         onRename(next)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          ;(e.target as HTMLInputElement).blur()
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          if (draft !== title) onRename(title)
+          setDraft(title)
+          setEditing(false)
+        }
       }}
       aria-label={`Headline level ${level}`}
     />
