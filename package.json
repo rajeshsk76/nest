@@ -1,0 +1,36 @@
+{
+  "name": "nest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Org mode for people who won't install Emacs.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rajeshsk76/nest.git"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "uniorg": "^1.4.0",
+    "uniorg-parse": "^3.2.2",
+    "uniorg-stringify": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "oxlint": "^1.79.0",
+    "typescript": "~5.8.3",
+    "vite": "^8.2.2",
+    "vitest": "^3.2.4"
+  }
+}

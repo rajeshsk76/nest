@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+*.local
+*.tsbuildinfo
+logs
+*.log
+.DS_Store
+.idea
+.cache
