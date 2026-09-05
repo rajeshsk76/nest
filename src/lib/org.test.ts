@@ -24,6 +24,10 @@ import {
   zeroEditWrite,
   parseInlineMarkup,
   updateTitleInSource,
+  listTables,
+  serializeOrgTable,
+  updateTableCellInSource,
+  addTableRowInSource,
 } from './org'
 
 const SAMPLE = `#+TITLE: Test
@@ -516,5 +520,100 @@ Sibling body.
     const parent = listHeadlines(TREE, 't').find((h) => h.title === 'Parent')!
     expect(moveSubtreeInSource(TREE, parent.path, 'up')).toBe(TREE)
     expect(() => insertHeadingInSource(TREE, parent.path, 'bad\nline')).toThrow(RefuseWrite)
+  })
+})
+
+describe('transparent tables (byte-splice)', () => {
+  const SAMPLE = `#+TITLE: Tables
+
+* Groceries
+| Item | Qty |
+|------+-----|
+| eggs | 12  |
+| milk | 1   |
+
+Keep this paragraph.
+
+* Other
+Unrelated body.
+`
+
+  it('parses contiguous Org table blocks with offsets', () => {
+    const tables = listTables(SAMPLE)
+    expect(tables).toHaveLength(1)
+    expect(tables[0]!.rows).toHaveLength(4)
+    expect(tables[0]!.rows[0]).toEqual({ kind: 'standard', cells: ['Item', 'Qty'] })
+    expect(tables[0]!.rows[1]).toEqual({ kind: 'rule', cells: [] })
+    expect(tables[0]!.rows[2]).toEqual({ kind: 'standard', cells: ['eggs', '12'] })
+    expect(tables[0]!.headlinePath).toEqual([0])
+    const slice = SAMPLE.slice(tables[0]!.start, tables[0]!.end)
+    expect(slice).toContain('| Item | Qty |')
+    expect(slice).toContain('| eggs | 12')
+  })
+
+  it('serializes with Emacs-friendly column alignment', () => {
+    const out = serializeOrgTable(
+      [
+        { kind: 'standard', cells: ['Item', 'Qty'] },
+        { kind: 'rule', cells: [] },
+        { kind: 'standard', cells: ['eggs', '12'] },
+        { kind: 'standard', cells: ['milk', '1'] },
+      ],
+      '',
+    )
+    expect(out).toBe(
+      `| Item | Qty |
+|------+-----|
+| eggs | 12  |
+| milk | 1   |
+`,
+    )
+  })
+
+  it('updates one cell without touching outside bytes or reordering headlines', () => {
+    const before = SAMPLE
+    const next = updateTableCellInSource(before, 0, 2, 1, '24')
+    expect(next).toContain('| eggs | 24')
+    expect(next).toContain('Keep this paragraph.')
+    expect(next).toContain('* Other')
+    expect(next).toContain('Unrelated body.')
+    // Outside the table span must be byte-identical
+    const table = listTables(before)[0]!
+    expect(next.slice(0, table.start)).toBe(before.slice(0, table.start))
+    // Trailing after original end may shift; compare suffix after table content via markers
+    expect(next.indexOf('* Other')).toBeGreaterThan(next.indexOf('| milk'))
+    expect(next.indexOf('* Groceries')).toBeLessThan(next.indexOf('* Other'))
+    expect(changedRegions(before, next)).toBe(1)
+    // Headline order unchanged
+    const titles = listHeadlines(next, 't').map((h) => h.title)
+    expect(titles).toEqual(['Groceries', 'Other'])
+  })
+
+  it('adds a row by splicing only the table region', () => {
+    const before = SAMPLE
+    const next = addTableRowInSource(before, 0)
+    expect(next).toContain('|      |     |')
+    expect(next).toContain('Keep this paragraph.')
+    expect(next).toContain('* Other')
+    expect(changedRegions(before, next)).toBe(1)
+    const rows = listTables(next)[0]!.rows.filter((r) => r.kind === 'standard')
+    expect(rows).toHaveLength(4)
+  })
+
+  it('preserves TBLFM and refuses unsafe cell values / rule edits', () => {
+    const withFm = `* T
+| a | b |
+|---+---|
+| 1 | 2 |
+#+TBLFM: @2$2=1
+`
+    const next = updateTableCellInSource(withFm, 0, 2, 0, '9')
+    expect(next).toContain('#+TBLFM: @2$2=1')
+    expect(next).toContain('| 9')
+    expect(next.slice(0, listTables(withFm)[0]!.start)).toBe(withFm.slice(0, listTables(withFm)[0]!.start))
+
+    expect(() => updateTableCellInSource(SAMPLE, 0, 1, 0, 'x')).toThrow(RefuseWrite)
+    expect(() => updateTableCellInSource(SAMPLE, 0, 2, 0, 'a|b')).toThrow(RefuseWrite)
+    expect(() => updateTableCellInSource(SAMPLE, 0, 2, 0, 'a\nb')).toThrow(RefuseWrite)
   })
 })
