@@ -943,7 +943,7 @@ button.tag,
   border-radius: 0.3rem;
   padding: 0.1rem 0.2rem;
   font-size: 0.65rem;
-  line-height: 1.2;
+  line-height: 1;
   background: transparent;
   color: var(--muted);
 }
@@ -1075,4 +1075,69 @@ button.tag,
   background: var(--accent-soft);
   color: var(--accent);
   border-color: #cfe0d3;
+}
+
+/* Slice 4 — Org source blocks (display + body splice; never execute) */
+.headline-src {
+  margin: 0.15rem 0 0.55rem;
+}
+
+.org-src-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.5rem;
+  max-width: 42rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.org-src-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.28rem 0.55rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(74, 93, 78, 0.04);
+}
+
+.org-src-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid #cfe0d3;
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+}
+
+.org-src-hint {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--muted);
+}
+
+.org-src-body {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  resize: vertical;
+  background: transparent;
+  padding: 0.45rem 0.65rem 0.55rem;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  tab-size: 2;
+}
+
+.org-src-body:focus {
+  outline: none;
+  background: #fff;
 }
