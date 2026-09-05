@@ -65,6 +65,10 @@ Browser mode remains fully supported for UI work without Rust.
 
 - App shell with name + tagline
 - Outline editor for headlines with TODO / DONE cycling
+- Org priorities `[#A]` / `[#B]` / `[#C]` (cycle in outline + Today; rewrite .org)
+- Org tags `:tag:` / `:tag1:tag2:` (chips add/remove; rewrite .org)
+- Today filters by priority and/or tag (sticky via localStorage); sort A → B → C → none
+- Capture parses `#A` / `[#B]` and trailing `:tag:` from the title text
 - Inline title editing that writes back through uniorg stringify
 - Raw source panel for direct .org text edits
 - Capture appends TODO headlines (optional CREATED timestamp) to inbox.org
@@ -85,8 +89,9 @@ Browser mode remains fully supported for UI work without Rust.
 
 Not Emacs Org parity:
 
-- UI focuses on headlines, TODO/DONE, planning timestamps, simple body text
-- Tags, priorities, drawers, clocks, links, tables are best-effort via source edits
+- UI focuses on headlines, TODO/DONE, priorities, tags, planning timestamps, simple body text
+- Drawers, clocks, links, tables, properties drawers UI are best-effort via source edits
+- Tag filter is AND (item must have every selected tag); no full agenda / refile
 - Title edits rebuild headline children as plain text
 - Web: files live in memory + localStorage (sample files under data/ / public/ are seeds only)
 - Desktop: .org files on disk are authoritative; sync/multi-device is out of scope
