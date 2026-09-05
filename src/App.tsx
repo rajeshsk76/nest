@@ -10,6 +10,7 @@ import {
   captureTodo,
   addTableRowInSource,
   demoteSubtreeInSource,
+  exportOrgToHtml,
   insertHeadingInSource,
   listHeadlines,
   changedRegions,
@@ -17,6 +18,7 @@ import {
   moveSubtreeInSource,
   promoteSubtreeInSource,
   RefuseWrite,
+  siblingHtmlName,
   type DateParts,
   type Priority,
   type TodoKeyword,
@@ -45,6 +47,7 @@ import {
   resetWorkspaceFiles,
   resolveWorkspaceOnce,
   StaleFileError,
+  writeSiblingHtml,
   writeWorkspaceFile,
 } from './lib/workspace'
 
@@ -275,6 +278,39 @@ export default function App() {
     setStatus(null)
   }
 
+
+  function downloadHtml(fileName: string, html: string) {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleExport() {
+    const orgName = activeMeta.name
+    const htmlName = siblingHtmlName(orgName)
+    const html = exportOrgToHtml(activeSource, { title: orgName.replace(/\.org$/i, '') })
+    // Web: always offer a download. Desktop: also write sibling next to the .org.
+    downloadHtml(htmlName, html)
+    if (desktop && folderPath) {
+      try {
+        const path = await writeSiblingHtml(folderPath, orgName, html)
+        setStatus(`Exported ${htmlName} beside the .org (${path}). Original unchanged.`)
+      } catch (err) {
+        console.error(err)
+        setStatus(`Downloaded ${htmlName}; could not write sibling on disk.`)
+      }
+    } else {
+      setStatus(`Downloaded ${htmlName}. Original .org unchanged.`)
+    }
+  }
+
   function focusCapture() {
     const el = document.getElementById('capture-input')
     if (el instanceof HTMLInputElement) {
@@ -350,13 +386,22 @@ export default function App() {
           projects.org
         </button>
         {view === 'editor' && (
-          <button
-            type="button"
-            className="tab quiet"
-            onClick={() => setShowSource((v) => !v)}
-          >
-            {showSource ? 'Hide source' : 'Show source'}
-          </button>
+          <>
+            <button
+              type="button"
+              className="tab quiet"
+              onClick={() => void handleExport()}
+            >
+              Export HTML
+            </button>
+            <button
+              type="button"
+              className="tab"
+              onClick={() => setShowSource((v) => !v)}
+            >
+              {showSource ? 'Hide source' : 'Show source'}
+            </button>
+          </>
         )}
       </nav>
 
