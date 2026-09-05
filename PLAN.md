@@ -26,6 +26,7 @@
 | **Slice 2** | Structural editing: fold (view only); promote/demote/move/insert via byte-splice |
 | **Slice 3** | Transparent tables: parse/edit/add-row via table-span byte-splice; Tab between cells |
 | **Slice 4** | Superior source code: detect #+BEGIN_SRC; language badge + monospace body; interior-only splice |
+| **Slice 5** | Export and publish: Org → single-file HTML (sibling next to .org; never replaces); web download + desktop sibling write |
 
 **Repo:** https://github.com/rajeshsk76/nest
 
@@ -100,6 +101,7 @@ V2.2 habit polish (caret / CREATED / Today chips / CI / onboarding) ships before
 | 2026-09-05 | Slice 2 structural editing: fold = visibility only; promote/demote/move/insert byte-splice |
 | 2026-09-05 | Slice 3 transparent tables: splice only table region; preserve outside bytes + TBLFM |
 | 2026-09-05 | Slice 4 superior source code: splice only src interior; preserve fences; never execute |
+| 2026-09-05 | Slice 5 export: pure Org→HTML read; sibling .html only; no Reveal in this slice |
 
 ---
 

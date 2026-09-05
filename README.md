@@ -75,6 +75,7 @@ Browser mode remains fully supported for UI work without Rust.
 - Structural editing: fold/unfold subtree (Tab / chevron — visibility only, no disk write); promote/demote stars; move subtree among siblings; insert same-level heading — all structure writes are byte-splice
 - Transparent tables: detect `| col | col |` blocks; edit cells in the outline; Tab between cells; add row — rewrites only the table region (Emacs-aligned pipes)
 - Source blocks: detect `#+BEGIN_SRC lang` … `#+END_SRC`; language badge + monospace editable body; rewrites only the interior (fences stay valid Org); never execute / tangle / Babel
+- Export HTML: one-file Org → HTML (headlines, lists, emphasis, links, tables, src as `<pre><code>`); downloads `inbox.html` / `projects.html`; on desktop also writes a sibling `.html` beside the `.org` — never replaces the `.org`
 - Inline title editing (click to edit raw Org; caret-stable) that byte-splices the title when you change it
 - Raw source panel for direct .org text edits
 - Capture appends TODO headlines with CREATED properties drawer (always on) to inbox.org
@@ -103,6 +104,7 @@ Not Emacs Org parity:
 - Fold is UI visibility only; promote/demote/move/insert splice stars or section spans (refuse if unsure)
 - Table cell/row edits splice only that table’s byte span (aligned); refuse pipes/newlines in cells
 - Src body edits splice only the interior between fences; refuse bodies that inject `#+END_SRC`; no execution
+- Export is a pure read of Org → new HTML file only (no Reveal slides in this slice)
 - Web: files live in memory + localStorage (sample files under data/ / public/ are seeds only)
 - Desktop: .org files on disk are authoritative; sync/multi-device is out of scope
 - No agenda beyond Today, no sync, auth, or AI

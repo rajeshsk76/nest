@@ -38,6 +38,7 @@ Slice 1 — elegant markup (display only)
 Slice 2 — structural editing (fold view-only; promote/demote/move/insert splice) — shipped
 Slice 3 — transparent tables — shipped
 Slice 4 — superior source code — shipped
+Slice 5 — export and publish — shipped
 Build all 10 pillars as sequential slices. Ship one slice, test, then the next. Do not start slice N+1 until slice N has tests and an Emacs smoke check.
 Slice 1 — Elegant markup
 Render in the outline (display only; disk stays raw Org):
@@ -63,7 +64,7 @@ Show language badge + monospace body
 Syntax highlight in UI if cheap; never execute code
 Tangle / Babel eval is out of scope
 Done when: editing the body rewrites only the block; fences stay valid Org.
-Slice 5 — Export and publish
+Slice 5 — Export and publish ✅ shipped
 One-file export: Org → HTML (headlines, lists, emphasis, links, tables, src as <pre>)
 Optional Reveal-style slides from headlines (template later)
 Export writes a sibling file next to the .org; never replaces the .org
@@ -102,6 +103,6 @@ UI in existing src/components/ — calm, whitespace, monospace accents, no neon
 Desktop writes go through src/lib/workspace.ts
 Update README “What works” and PLAN.md after each slice
 If a slice fights the round-trip, shrink the slice. Integrity beats features.
-Slices 1–4 shipped. Start with Slice 5 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
+Slices 1–5 shipped. Start with Slice 6 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
 END PROMPT
 
