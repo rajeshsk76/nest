@@ -1,1 +1,1 @@
-PLACEHOLDER_LOAD_FROM_FILE
+file:///tmp/ta0_content.txt
