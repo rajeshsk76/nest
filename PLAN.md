@@ -38,6 +38,8 @@
 
 ## Next plan (ordered)
 
+V2.2 habit polish (caret / CREATED / Today chips / CI / onboarding) ships before calendar sync.
+
 ### P0 — Make desktop feel finished
 1. **Proper app icons** checked into `src-tauri/icons` (RGBA) + generate via script on clone  
 2. **One-command first run** doc (Rust + apt deps + `tauri:dev`) in README “5 minutes to desktop”  
