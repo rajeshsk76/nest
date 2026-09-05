@@ -9,7 +9,7 @@
  *
  * Three checks per corpus file:
  *   1. zero-edit   -- a no-op mutation must return the identical string
- *   2. mark-DONE   -- every headline, exactly one changed line, same line count
+ *   2. mark-DONE   -- plain: one changed line; repeater: ≤3 hunks + LAST_REPEAT
  *   3. reschedule  -- every stamp keeps its time of day, repeater and warning
  *
  * Usage:
@@ -25,7 +25,9 @@ import {
   changedRegions,
   listHeadlines,
   markDoneInSource,
+  stampHasRepeater,
   updateScheduledInSource,
+  updateTodoInSource,
 } from '../src/lib/org.ts'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -65,6 +67,22 @@ function isSingleLineEdit(before, after) {
   return a.filter((line, i) => line !== b[i]).length === 1
 }
 
+function headlineHasRepeater(h) {
+  return stampHasRepeater(h.scheduled) || stampHasRepeater(h.deadline)
+}
+
+/** Repeater Mark DONE may touch keyword + planning + LAST_REPEAT (≤3 hunks). */
+function isLegalRepeaterMarkDone(before, after) {
+  if (after === before) return true
+  if (changedRegions(before, after) > 3) return false
+  if (!after.includes(':LAST_REPEAT:')) return false
+  // Must not smash common fragile tokens outside the splice
+  for (const token of ['#+BEGIN_SRC', '#+END_SRC', '#+MACRO:']) {
+    if (before.includes(token) && !after.includes(token)) return false
+  }
+  return true
+}
+
 /** Every timestamp's suffix: time of day, repeater, warning period. */
 function stampSuffixes(source) {
   return [...source.matchAll(/[<[]\d{4}-\d{2}-\d{2}(?:[ \t]+\S{2,3})?([^\]>]*)[>\]]/g)]
@@ -83,18 +101,31 @@ for (const file of collectOrgFiles()) {
   for (const h of heads) {
     // no-op: setting the keyword it already has must not move a byte
     try {
-      const out = markDoneInSource(source, h.path)
-      const noop = markDoneInSource(out, h.path)
-      record(file, `zero-edit [${h.path}]`, noop === out, 'no-op mutated the file')
+      const kw = h.todo === 'DONE' ? 'DONE' : h.todo === 'TODO' ? 'TODO' : null
+      if (kw === 'TODO' || kw === 'DONE') {
+        const noop = updateTodoInSource(source, h.path, kw)
+        record(file, `zero-edit [${h.path}]`, noop === source, 'no-op mutated the file')
+      } else {
+        // Custom keywords / bare headlines: markDone idempotence only when non-repeater
+        const out = markDoneInSource(source, h.path)
+        if (headlineHasRepeater(h)) {
+          record(file, `zero-edit [${h.path}]`, true, 'skipped repeater (second DONE advances again)')
+        } else {
+          const noop = markDoneInSource(out, h.path)
+          record(file, `zero-edit [${h.path}]`, noop === out, 'no-op mutated the file')
+        }
+      }
     } catch (err) {
       record(file, `zero-edit [${h.path}]`, false, `refused: ${err.message}`)
     }
 
-    // mark DONE: exactly one line may change
+    // mark DONE: one line for plain; ≤3 hunks + LAST_REPEAT for repeaters
     try {
       const out = markDoneInSource(source, h.path)
-      const ok = out === source || isSingleLineEdit(source, out)
-      record(file, `mark-DONE [${h.path}]`, ok, 'touched more than one line')
+      const ok = headlineHasRepeater(h)
+        ? isLegalRepeaterMarkDone(source, out)
+        : out === source || isSingleLineEdit(source, out)
+      record(file, `mark-DONE [${h.path}]`, ok, 'illegal mark-DONE splice shape')
     } catch (err) {
       record(file, `mark-DONE [${h.path}]`, false, `refused: ${err.message}`)
     }
