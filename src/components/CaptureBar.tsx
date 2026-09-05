@@ -2,20 +2,19 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 
 interface CaptureBarProps {
-  onCapture: (text: string, withTimestamp: boolean) => void
+  onCapture: (text: string) => void
   disabled?: boolean
 }
 
 export function CaptureBar({ onCapture, disabled = false }: CaptureBarProps) {
   const [text, setText] = useState('')
-  const [withTimestamp, setWithTimestamp] = useState(true)
 
   function submit(event: FormEvent) {
     event.preventDefault()
     if (disabled) return
     const value = text.trim()
     if (!value) return
-    onCapture(value, withTimestamp)
+    onCapture(value)
     setText('')
   }
 
@@ -33,17 +32,8 @@ export function CaptureBar({ onCapture, disabled = false }: CaptureBarProps) {
         placeholder="Quick TODO — optional #A / [#B] and :tag: at end"
         autoComplete="off"
         disabled={disabled}
-        title="Tip: Ship Nest #A :work:  or  [#C] Buy milk :errands:"
+        title="Tip: Ship Nest #A :work:  or  [#C] Buy milk :errands: — CREATED is always added"
       />
-      <label className="capture-check">
-        <input
-          type="checkbox"
-          checked={withTimestamp}
-          onChange={(e) => setWithTimestamp(e.target.checked)}
-          disabled={disabled}
-        />
-        CREATED
-      </label>
       <button type="submit" className="btn primary" disabled={disabled}>
         Add
       </button>
