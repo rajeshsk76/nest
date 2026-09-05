@@ -18,6 +18,8 @@ import {
   updateTagsInSource,
   updateTodoInSource,
   zeroEditWrite,
+  parseInlineMarkup,
+  updateTitleInSource,
 } from './org'
 
 const SAMPLE = `#+TITLE: Test
@@ -294,8 +296,8 @@ SCHEDULED: <2026-09-05 Fri +1w>
     expect(result).toContain('* DONE Water plants')
     expect(result).toContain('SCHEDULED: <2026-09-05 Fri +1w>')
     expect(result).toContain('#+BEGIN_SRC emacs-lisp')
-    expect(result).not.toContain('#+begin_src')
     expect(result).toContain('#+END_SRC')
+    expect(result).not.toContain('#+begin_src')
     // Blank line after SCHEDULED preserved
     expect(result).toMatch(/SCHEDULED: <2026-09-05 Fri \+1w>\n\n#\+BEGIN_SRC/)
     // Only the keyword bytes changed
@@ -344,5 +346,55 @@ SCHEDULED: <2026-09-05 Fri +1w>
     const identical = fixtures.filter((s) => zeroEditWrite(s) === s).length
     const pct = (identical / fixtures.length) * 100
     expect(pct).toBeGreaterThanOrEqual(95)
+  })
+})
+
+
+describe('inline markup', () => {
+  const MARKUP = `#+TITLE: Markup
+
+* TODO Try *bold* /italic/ _under_ +strike+ =verb= ~code~ and [[https://orgmode.org][Org mode]] :nest:markup:
+Body stays plain.
+`
+
+  it('parses emphasis and links for display helpers', () => {
+    const title =
+      'Try *bold* /italic/ _under_ +strike+ =verb= ~code~ and [[https://orgmode.org][Org mode]]'
+    const nodes = parseInlineMarkup(title)
+    const kinds = nodes.map((n) => n.kind)
+    expect(kinds).toContain('bold')
+    expect(kinds).toContain('italic')
+    expect(kinds).toContain('underline')
+    expect(kinds).toContain('strike')
+    expect(kinds).toContain('verbatim')
+    expect(kinds).toContain('code')
+    expect(kinds).toContain('link')
+    const link = nodes.find((n) => n.kind === 'link')
+    expect(link).toEqual({
+      kind: 'link',
+      url: 'https://orgmode.org',
+      label: 'Org mode',
+    })
+    const bare = parseInlineMarkup('See [[https://example.com]]')
+    const bareLink = bare.find((n) => n.kind === 'link')
+    expect(bareLink).toEqual({
+      kind: 'link',
+      url: 'https://example.com',
+      label: 'https://example.com',
+    })
+  })
+
+  it('fixture markup headline lists with raw title markers', () => {
+    const headlines = listHeadlines(MARKUP, 'markup')
+    const item = headlines[0]!
+    expect(item.title).toContain('*bold*')
+    expect(item.title).toContain('[[https://orgmode.org][Org mode]]')
+    expect(item.tags).toContain('markup')
+  })
+
+  it('zero-edit and same-title splice leave markup file byte-identical', () => {
+    expect(zeroEditWrite(MARKUP)).toBe(MARKUP)
+    const h = listHeadlines(MARKUP, 'markup')[0]!
+    expect(updateTitleInSource(MARKUP, h.path, h.title)).toBe(MARKUP)
   })
 })
