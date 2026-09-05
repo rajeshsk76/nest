@@ -14,6 +14,7 @@ import {
   updateScheduledInSource,
   updateTagsInSource,
   updateTodoInSource,
+  zeroEditWrite,
 } from './org'
 
 const SAMPLE = `#+TITLE: Test
@@ -61,12 +62,17 @@ describe('org round-trip', () => {
     expect(write?.scheduledDate).toEqual({ year: 2026, month: 9, day: 5 })
   })
 
-  it('updates TODO to DONE and stringifies back', () => {
+  it('updates TODO to DONE via byte-splice', () => {
     const headlines = listHeadlines(SAMPLE, 'test')
     const write = headlines.find((h) => h.title === 'Write tests')!
     const next = updateTodoInSource(SAMPLE, write.path, 'DONE')
-    expect(next).toContain('* DONE Write tests')
-    expect(markDoneInSource(SAMPLE, write.path)).toContain('* DONE Write tests')
+    expect(next.ok).toBe(true)
+    if (next.ok === false) return
+    expect(next.source).toContain('* DONE Write tests')
+    const marked = markDoneInSource(SAMPLE, write.path)
+    expect(marked.ok).toBe(true)
+    if (marked.ok === false) return
+    expect(marked.source).toContain('* DONE Write tests')
   })
 
   it('captures a TODO into inbox content with CREATED always', () => {
@@ -249,5 +255,86 @@ SCHEDULED: <2026-09-06 Sun>
     expect(withBoth).toContain('DEADLINE: <2026-09-08 Tue>')
     expect(roundTrip(withBoth)).toContain('SCHEDULED: <2026-09-07 Mon>')
     expect(roundTrip(withBoth)).toContain('DEADLINE: <2026-09-08 Tue>')
+  })
+})
+
+describe('byte-splice Org writes', () => {
+  const REPEATER = `* TODO Water plants
+SCHEDULED: <2026-09-05 Fri +1w>
+
+#+BEGIN_SRC emacs-lisp
+(message "fragile")
+#+END_SRC
+
+#+MACRO: greeting Hello $1
+`
+
+  it('mark DONE splices only the TODO token (preserves +1w, BEGIN_SRC case, blanks)', () => {
+    const headlines = listHeadlines(REPEATER, 'rep')
+    const h = headlines.find((x) => x.title === 'Water plants')!
+    const result = markDoneInSource(REPEATER, h.path)
+    expect(result.ok).toBe(true)
+    if (result.ok === false) return
+
+    expect(result.source).toContain('* DONE Water plants')
+    expect(result.source).toContain('SCHEDULED: <2026-09-05 Fri +1w>')
+    expect(result.source).toContain('#+BEGIN_SRC emacs-lisp')
+    expect(result.source).toContain('#+END_SRC')
+    expect(result.source).not.toContain('#+begin_src')
+    // Blank line after SCHEDULED preserved
+    expect(result.source).toMatch(/SCHEDULED: <2026-09-05 Fri \+1w>\n\n#\+BEGIN_SRC/)
+    // Only the keyword bytes changed
+    const expected = REPEATER.replace('* TODO Water plants', '* DONE Water plants')
+    expect(result.source).toBe(expected)
+  })
+
+  it('zero-edit write is byte-identical', () => {
+    expect(zeroEditWrite(REPEATER)).toBe(REPEATER)
+    expect(zeroEditWrite(SAMPLE)).toBe(SAMPLE)
+    // markDone with already-DONE is identity
+    const doneSrc = '* DONE Already\n'
+    const headlines = listHeadlines(doneSrc, 'd')
+    const result = markDoneInSource(doneSrc, headlines[0]!.path)
+    expect(result).toEqual({ ok: true, source: doneSrc })
+  })
+
+  it('refuses splice when path is invalid', () => {
+    const result = updateTodoInSource(SAMPLE, [99], 'DONE')
+    expect(result.ok).toBe(false)
+    if (result.ok !== false) return
+    expect(result.reason).toMatch(/No section/)
+  })
+
+  it('cycles TODO → DONE → null via splice without rewriting the rest', () => {
+    const base = `#+TITLE: Keep\n\n* TODO Task\nBody keeps blank lines.\n\n#+BEGIN_SRC text\nok\n#+END_SRC\n`
+    const h = listHeadlines(base, 'c')[0]!
+    const done = updateTodoInSource(base, h.path, 'DONE')
+    expect(done.ok).toBe(true)
+    if (done.ok === false) return
+    expect(done.source).toBe(base.replace('* TODO Task', '* DONE Task'))
+    const cleared = updateTodoInSource(done.source, h.path, null)
+    expect(cleared.ok).toBe(true)
+    if (cleared.ok === false) return
+    expect(cleared.source).toBe(base.replace('* TODO Task', '* Task'))
+    expect(cleared.source).toContain('#+BEGIN_SRC text')
+  })
+})
+
+describe('zero-edit installer gate', () => {
+  it('fixture samples are >=95% byte-identical on zero-edit', () => {
+    const fixtures = [
+      SAMPLE,
+      TAGGED,
+      `* TODO Water plants
+SCHEDULED: <2026-09-05 Fri +1w>
+
+#+BEGIN_SRC emacs-lisp
+(message "fragile")
+#+END_SRC
+`,
+    ]
+    const identical = fixtures.filter((s) => zeroEditWrite(s) === s).length
+    const pct = (identical / fixtures.length) * 100
+    expect(pct).toBeGreaterThanOrEqual(95)
   })
 })
