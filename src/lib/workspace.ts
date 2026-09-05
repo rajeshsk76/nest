@@ -208,3 +208,17 @@ export function resolveWorkspaceOnce() {
   if (!resolveOnce) resolveOnce = resolveWorkspace()
   return resolveOnce
 }
+
+/** Write a sibling .html next to an .org in the workspace folder (never touches the .org). */
+export async function writeSiblingHtml(
+  folder: string,
+  orgFileName: string,
+  html: string,
+): Promise<string> {
+  const base = orgFileName.replace(/\.org$/i, '')
+  const htmlName = `${base}.html`
+  const target = await join(folder, htmlName)
+  await writeTextFile(target, html)
+  return target
+}
+

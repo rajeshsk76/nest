@@ -23,3 +23,9 @@ export {
   assertSafeSrcBody,
   updateSrcBodyInSource,
 } from "./org-src"
+export type { ExportOrgOptions } from "./org-export"
+export {
+  escapeHtml,
+  exportOrgToHtml,
+  siblingHtmlName,
+} from "./org-export"
