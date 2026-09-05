@@ -8,6 +8,7 @@ import { TodayView } from './components/TodayView'
 import type { NestFileId } from './fixtures'
 import {
   captureTodo,
+  addTableRowInSource,
   demoteSubtreeInSource,
   insertHeadingInSource,
   listHeadlines,
@@ -22,6 +23,7 @@ import {
   updateDeadlineInSource,
   updatePriorityInSource,
   updateScheduledInSource,
+  updateTableCellInSource,
   updateTagsInSource,
   updateTitleInSource,
   updateTodoInSource,
@@ -225,6 +227,19 @@ export default function App() {
     applyEdit(activeFile, (src) => insertHeadingInSource(src, path))
   }
 
+  function handleUpdateTableCell(
+    tableIndex: number,
+    row: number,
+    col: number,
+    value: string,
+  ) {
+    applyEdit(activeFile, (src) => updateTableCellInSource(src, tableIndex, row, col, value))
+  }
+
+  function handleAddTableRow(tableIndex: number) {
+    applyEdit(activeFile, (src) => addTableRowInSource(src, tableIndex))
+  }
+
   function handleMarkDone(fileId: string, path: number[]) {
     applyEdit(fileId as NestFileId, (src) => markDoneInSource(src, path))
   }
@@ -382,6 +397,8 @@ export default function App() {
                 onDemote={handleDemote}
                 onMove={handleMove}
                 onInsertHeading={handleInsertHeading}
+                onUpdateTableCell={handleUpdateTableCell}
+                onAddTableRow={handleAddTableRow}
               />
             </section>
             {showSource && (
