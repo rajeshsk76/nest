@@ -31,7 +31,7 @@
 
 - Full Org agenda / sparse trees / column view  
 - Babel, publish, org-roam graph  
-- Multiplayer / cloud sync (maybe later as optional Pro)  
+- Multiplayer / cloud / Pro sync — **out**; contradicts local-files pitch  
 - AI as core (assist pane only if it never owns the file)
 
 ---
@@ -51,12 +51,12 @@ V2.2 habit polish (caret / CREATED / Today chips / CI / onboarding) ships before
 6. **Refile** inbox → projects (move headline between files)
 
 ### P2 — Trust & round-trip (V2.3)
-7. Harder **uniorg round-trip** tests (drawers, properties you don’t smash)  
+7. **Byte-splice writes** + harder round-trip tests (drawers, properties you don’t smash); see roadmap Conformance  
 8. **Open in Emacs** / reveal in file manager  
 9. Optional **git status** badge for the workspace folder
 
 ### P3 — Business (when product loves)
-10. Free local forever · Pro sync later · Team shared folder later  
+10. Free local forever · no Pro/cloud sync (local files are the product) · optional team shared folder on disk later  
 11. Website / demo GIF · “survives opening in Emacs” story
 
 ---

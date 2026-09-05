@@ -16,14 +16,15 @@ Org mode for people who will not install Emacs. Plain .org files you own. Captur
 
 Calendar sync is deferred. Next habit/coexistence items:
 
-1. SCHEDULED / DEADLINE picker polish (partial already)
-2. Reload on external edit
-3. 7-day agenda strip
-4. Refile inbox to projects
+1. **Byte-splice writes** — MVP shipped for TODO/DONE mark-done; extend to title/tags/planning; Emacs repeater DONE still open
+2. SCHEDULED / DEADLINE picker polish (partial already); Emacs-correct repeater DONE
+3. Reload on external edit
+4. 7-day agenda strip
+5. Refile inbox to projects
 
 ## Later maybe
 
-Harder round-trip tests; open in Emacs; git status badge; icons; optional Pro sync that never locks the format.
+Harder round-trip tests; open in Emacs; git status badge; icons.
 
 ## Not on the map
 
@@ -31,6 +32,16 @@ Harder round-trip tests; open in Emacs; git status badge; icons; optional Pro sy
 - Babel, publish, org-roam
 - AI that owns files
 - Calendar sync (explicitly deferred)
+- **Pro sync / paid sync / cloud sync** — deleted from the roadmap. Sync contradicts the local-files pitch (disk `.org` you own; no Nest-hosted source of truth).
+
+## Conformance
+
+Org integrity is a product gate, not a nice-to-have.
+
+- **Byte-splice required** for edits: change only the bytes that must change; do not regenerate the whole file through parse → stringify for routine writes (Mark DONE, title, tags, planning).
+- **Installer gated** on ≥95% byte-identical zero-edit saves (parse/load/save with no intentional mutation must leave the file unchanged for that share of a public corpus).
+- **Public `emacs --batch` corpus** number TBD — measure Nest vs Emacs on the same fixtures; publish the score once the corpus exists.
+- Falsification (`docs/falsification-repeater.md`): Mark DONE **byte-splice PASS** (file integrity); repeater DONE **semantics** still FAIL vs Emacs. Zero-edit gate via conformance:zero-edit (>=95%).
 
 ## Rule
 
