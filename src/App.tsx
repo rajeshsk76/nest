@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CaptureBar } from './components/CaptureBar'
+import { FolderBar } from './components/FolderBar'
 import { OutlineEditor } from './components/OutlineEditor'
 import { SourcePanel } from './components/SourcePanel'
 import { TodayView } from './components/TodayView'
@@ -11,6 +12,7 @@ import {
   updateTitleInSource,
   updateTodoInSource,
 } from './lib/org'
+import { isDesktop } from './lib/platform'
 import {
   fileMeta,
   hasStoredFiles,
@@ -20,29 +22,85 @@ import {
   saveFiles,
   type FilesState,
 } from './lib/storage'
+import {
+  pickWorkspaceFolder,
+  readWorkspaceFiles,
+  resetWorkspaceFiles,
+  resolveWorkspaceOnce,
+  writeWorkspaceFile,
+} from './lib/workspace'
 
 type View = 'editor' | 'today'
 
+const desktop = isDesktop()
+
 export default function App() {
-  const [files, setFiles] = useState<FilesState>(() => loadFiles())
+  const [files, setFiles] = useState<FilesState>(() =>
+    desktop ? { inbox: '', projects: '' } : loadFiles(),
+  )
   const [activeFile, setActiveFile] = useState<NestFileId>('inbox')
   const [view, setView] = useState<View>('editor')
   const [showSource, setShowSource] = useState(true)
+  const [folderPath, setFolderPath] = useState<string | null>(null)
+  const [desktopReady, setDesktopReady] = useState(!desktop)
+  const [createdDefault, setCreatedDefault] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
+  const skipWebPersist = useRef(desktop)
 
   useEffect(() => {
-    if (hasStoredFiles()) return
+    if (!desktop) {
+      if (hasStoredFiles()) return
+      let cancelled = false
+      loadFilesWithRemoteSeed().then((seeded) => {
+        if (!cancelled) setFiles(seeded)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
     let cancelled = false
-    loadFilesWithRemoteSeed().then((seeded) => {
-      if (!cancelled) setFiles(seeded)
-    })
+    ;(async () => {
+      try {
+        const result = await resolveWorkspaceOnce()
+        if (cancelled) return
+        setFolderPath(result.path)
+        setFiles(result.files)
+        setCreatedDefault(result.createdDefault)
+        setDesktopReady(true)
+        if (result.createdDefault) {
+          setStatus('Created a default Nest folder under app data.')
+        }
+      } catch (err) {
+        console.error(err)
+        if (!cancelled) {
+          setStatus('Could not open a Nest folder. Try Change folder.')
+          setDesktopReady(true)
+        }
+      }
+    })()
     return () => {
       cancelled = true
     }
   }, [])
 
   useEffect(() => {
+    if (desktop || skipWebPersist.current) return
     saveFiles(files)
   }, [files])
+
+  const persistFile = useCallback(
+    async (id: NestFileId, source: string) => {
+      if (!desktop || !folderPath) return
+      try {
+        await writeWorkspaceFile(folderPath, id, source)
+      } catch (err) {
+        console.error(err)
+        setStatus(`Failed to write ${id}.org to disk.`)
+      }
+    },
+    [folderPath],
+  )
 
   const activeSource = files[activeFile]
   const activeMeta = fileMeta(activeFile)
@@ -58,13 +116,15 @@ export default function App() {
 
   function patchFile(id: NestFileId, source: string) {
     setFiles((prev) => ({ ...prev, [id]: source }))
+    void persistFile(id, source)
   }
 
   function handleCapture(text: string, withTimestamp: boolean) {
-    setFiles((prev) => ({
-      ...prev,
-      inbox: captureTodo(prev.inbox, text, { withTimestamp }),
-    }))
+    setFiles((prev) => {
+      const inbox = captureTodo(prev.inbox, text, { withTimestamp })
+      void persistFile('inbox', inbox)
+      return { ...prev, inbox }
+    })
     setActiveFile('inbox')
     setView('editor')
   }
@@ -79,16 +139,33 @@ export default function App() {
 
   function handleMarkDone(fileId: string, path: number[]) {
     const id = fileId as NestFileId
-    setFiles((prev) => ({
-      ...prev,
-      [id]: markDoneInSource(prev[id], path),
-    }))
+    setFiles((prev) => {
+      const next = markDoneInSource(prev[id], path)
+      void persistFile(id, next)
+      return { ...prev, [id]: next }
+    })
   }
 
-  function handleReset() {
-    setFiles(resetFiles())
+  async function handleReset() {
+    if (desktop && folderPath) {
+      const seeds = await resetWorkspaceFiles(folderPath)
+      setFiles(seeds)
+    } else {
+      setFiles(resetFiles())
+    }
     setActiveFile('inbox')
     setView('editor')
+  }
+
+  async function handleChangeFolder() {
+    if (!desktop) return
+    const picked = await pickWorkspaceFolder()
+    if (!picked) return
+    const nextFiles = await readWorkspaceFiles(picked)
+    setFolderPath(picked)
+    setFiles(nextFiles)
+    setCreatedDefault(false)
+    setStatus(null)
   }
 
   return (
@@ -104,13 +181,28 @@ export default function App() {
           </div>
         </div>
         <div className="shell-actions">
-          <button type="button" className="btn ghost" onClick={handleReset}>
+          <button type="button" className="btn ghost" onClick={() => void handleReset()}>
             Reset fixtures
           </button>
         </div>
       </header>
 
-      <CaptureBar onCapture={handleCapture} />
+      {desktop && (
+        <FolderBar
+          path={folderPath}
+          ready={desktopReady}
+          createdDefault={createdDefault}
+          onChangeFolder={() => void handleChangeFolder()}
+        />
+      )}
+
+      {status && (
+        <p className="status-banner" role="status">
+          {status}
+        </p>
+      )}
+
+      <CaptureBar onCapture={handleCapture} disabled={desktop && !desktopReady} />
 
       <nav className="tabs" aria-label="Primary">
         <button
@@ -154,7 +246,11 @@ export default function App() {
       </nav>
 
       <main className="main">
-        {view === 'today' ? (
+        {!desktopReady ? (
+          <p className="empty" style={{ padding: '1.2rem' }}>
+            Opening Nest folder…
+          </p>
+        ) : view === 'today' ? (
           <TodayView files={fileList} onMarkDone={handleMarkDone} />
         ) : (
           <div className={showSource ? 'editor-layout split' : 'editor-layout'}>
@@ -185,8 +281,12 @@ export default function App() {
       </main>
 
       <footer className="shell-footer">
-        <span>Local-first · plain .org files in memory + localStorage</span>
-        <span>Week-1 starter · no sync, auth, or AI</span>
+        <span>
+          {desktop
+            ? 'Local-first · plain .org files on disk'
+            : 'Local-first · plain .org files in memory + localStorage'}
+        </span>
+        <span>Week-2 desktop shell · no sync, auth, or AI</span>
       </footer>
     </div>
   )
