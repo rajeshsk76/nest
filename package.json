@@ -1,1 +1,54 @@
-PLACEHOLDER
+{
+  "name": "nest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Org mode for people who won't install Emacs.",
+  "scripts": {
+    "postinstall": "node scripts/ensure-sample-orgs.mjs",
+    "predev": "node scripts/ensure-sample-orgs.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:vite": "node scripts/free-port.mjs && vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev:stable": "node scripts/dev.mjs",
+    "prepreview": "node scripts/ensure-sample-orgs.mjs",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173 --strictPort",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint",
+    "ensure-sample-orgs": "node scripts/ensure-sample-orgs.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "node scripts/free-port.mjs && tauri dev",
+    "tauri:build": "tauri build",
+    "free-port": "node scripts/free-port.mjs",
+    "conformance:zero-edit": "vite-node scripts/conformance-zero-edit.mjs",
+    "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs --dry-run",
+    "test:emacs-oracle": "node scripts/emacs-repeater-oracle.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rajeshsk76/nest.git"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.3",
+    "@tauri-apps/plugin-fs": "^2.5.2",
+    "@tauri-apps/plugin-store": "^2.4.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "uniorg": "^1.4.0",
+    "uniorg-parse": "^3.2.2",
+    "uniorg-stringify": "^1.4.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "oxlint": "^1.79.0",
+    "typescript": "~5.8.3",
+    "vite": "^8.2.2",
+    "vitest": "^3.2.4"
+  }
+}
