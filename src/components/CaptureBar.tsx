@@ -30,9 +30,10 @@ export function CaptureBar({ onCapture, disabled = false }: CaptureBarProps) {
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Quick TODO → appends to inbox.org"
+        placeholder="Quick TODO — optional #A / [#B] and :tag: at end"
         autoComplete="off"
         disabled={disabled}
+        title="Tip: Ship Nest #A :work:  or  [#C] Buy milk :errands:"
       />
       <label className="capture-check">
         <input
