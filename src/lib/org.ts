@@ -1,4 +1,4 @@
-import type { Headline, OrgData, OrgNode, Planning, Text, Timestamp } from 'uniorg'
+import type { Headline, OrgData, OrgNode, Planning, Timestamp } from 'uniorg'
 import { parse } from 'uniorg-parse/lib/parser.js'
 import { stringify } from 'uniorg-stringify/lib/stringify.js'
 
@@ -41,8 +41,78 @@ export interface ParsedCapture {
   tags: string[]
 }
 
+/** Keywords from #+TODO: / #+SEQ_TODO: / #+TYP_TODO:, minus the `|` and fast keys. */
+export function todoKeywordsFrom(source: string): string[] {
+  const out: string[] = []
+  const re = /^[ \t]*#\+(?:TODO|SEQ_TODO|TYP_TODO):(.*)$/gim
+  let m: RegExpExecArray | null
+  while ((m = re.exec(source))) {
+    for (const tok of m[1]!.split(/\s+/)) {
+      if (!tok || tok === '|') continue
+      out.push(tok.replace(/\([^)]*\)$/, ''))
+    }
+  }
+  if (out.length === 0) return ['TODO', 'DONE']
+  if (!out.includes('TODO')) out.push('TODO')
+  if (!out.includes('DONE')) out.push('DONE')
+  return [...new Set(out)]
+}
+
 export function parseOrg(source: string): OrgData {
-  return parse(source)
+  return parse(source, {
+    trackPosition: true,
+    todoKeywords: todoKeywordsFrom(source),
+  })
+}
+
+/** Thrown instead of writing a file Nest is not certain about. */
+export class RefuseWrite extends Error {}
+
+export interface Edit {
+  start: number
+  end: number
+  text: string
+}
+
+/**
+ * The compat badge, in eight lines: every byte outside an edit span is
+ * copied through from the original. Nothing is ever regenerated.
+ */
+export function applyEdits(source: string, edits: Array<Edit | null>): string {
+  const sorted = edits.filter((e): e is Edit => e !== null).sort((a, b) => a.start - b.start)
+  let out = ''
+  let cursor = 0
+  for (const e of sorted) {
+    if (e.start < cursor) throw new RefuseWrite('overlapping edits')
+    if (e.start < 0 || e.end > source.length || e.end < e.start) {
+      throw new RefuseWrite('edit span out of range')
+    }
+    out += source.slice(cursor, e.start) + e.text
+    cursor = e.end
+  }
+  return out + source.slice(cursor)
+}
+
+/** Number of contiguous changed line-regions between two versions (0 or 1 expected). */
+/** Zero-edit save: return original bytes unchanged (installer gate). */
+export function zeroEditWrite(source: string): string {
+  return source
+}
+
+export function changedRegions(before: string, after: string): number {
+  const a = before.split('\n')
+  const b = after.split('\n')
+  let head = 0
+  while (head < a.length && head < b.length && a[head] === b[head]) head += 1
+  let tail = 0
+  while (
+    tail < a.length - head &&
+    tail < b.length - head &&
+    a[a.length - 1 - tail] === b[b.length - 1 - tail]
+  ) {
+    tail += 1
+  }
+  return a.length - head - tail === 0 && b.length - head - tail === 0 ? 0 : 1
 }
 
 export function stringifyOrg(tree: OrgData | OrgNode): string {
@@ -135,20 +205,17 @@ export function datePartsFromInput(value: string): DateParts | null {
   return { year, month, day }
 }
 
-export function makeActiveTimestamp(parts: DateParts): Timestamp {
-  return {
-    type: 'timestamp',
-    timestampType: 'active',
-    rawValue: formatOrgDate(parts, true),
-    start: {
-      year: parts.year,
-      month: parts.month,
-      day: parts.day,
-      hour: null,
-      minute: null,
-    },
-    end: null,
-  }
+/**
+ * Weekday abbreviation for a date, used when splicing the date field of an
+ * existing stamp. We never build a whole timestamp from scratch: repeaters,
+ * warning periods and times of day live in the original bytes.
+ */
+function weekdayOf(parts: DateParts): string {
+  return WEEKDAYS[new Date(parts.year, parts.month - 1, parts.day).getDay()]!
+}
+
+function isoOf(parts: DateParts): string {
+  return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`
 }
 
 function planningOf(sectionChildren: OrgNode[]): Planning | null {
@@ -231,137 +298,115 @@ function headlineAt(section: OrgNode): Headline | null {
   return (section.children.find((c) => c.type === 'headline') as Headline | undefined) ?? null
 }
 
-export type OrgWriteResult =
-  | { ok: true; source: string }
-  | { ok: false; reason: string }
+interface HeadSlot {
+  start: number
+  end: number
+  gap: number
+}
 
-/**
- * Zero-edit save: return original bytes unchanged.
- * Installer gate: ≥95% of corpus must stay byte-identical on this path.
- */
-export function zeroEditWrite(source: string): string {
-  return source
+interface HeadParts {
+  starsEnd: number
+  keyword: HeadSlot | null
+  priority: HeadSlot | null
+  titleStart: number
+}
+
+/** Offsets, relative to the headline slice, of the stars / keyword / priority / title. */
+function headParts(head: string, keywords: string[]): HeadParts | null {
+  const stars = head.match(/^(\*+[ \t]+)/)
+  if (!stars) return null
+  let i = stars[1]!.length
+  const parts: HeadParts = { starsEnd: i, keyword: null, priority: null, titleStart: i }
+  const kw = head.slice(i).match(/^(\S+)([ \t]*)/)
+  if (kw && keywords.includes(kw[1]!)) {
+    parts.keyword = { start: i, end: i + kw[1]!.length, gap: kw[2]!.length }
+    i += kw[0]!.length
+  }
+  const pri = head.slice(i).match(/^(\[#[A-Za-z0-9]\])([ \t]*)/)
+  if (pri) {
+    parts.priority = { start: i, end: i + pri[1]!.length, gap: pri[2]!.length }
+    i += pri[0]!.length
+  }
+  parts.titleStart = i
+  return parts
+}
+
+interface HeadlineContext {
+  section: OrgNode
+  start: number
+  end: number
+  eol: number
+  parts: HeadParts
 }
 
 /**
- * Locate the TODO/DONE keyword span using the structural prefix before the
- * headline title (`section.contentsBegin` .. `headline.contentsBegin`).
- * Returns absolute [start, end) offsets in `source`, or null if unsure.
+ * Locate a headline's byte span. uniorg's headline position ends before the
+ * tag padding, so `[start,end)` is exactly `* TODO [#A] title`.
  */
-function findTodoKeywordSpan(
+function headlineContext(
   source: string,
-  section: OrgNode,
-  headline: Headline,
-  expected: TodoKeyword,
-):
-  | { start: number; end: number; keyword: 'TODO' | 'DONE' }
-  | { start: number; end: number; keyword: null }
-  | null {
-  const sectionBegin = (section as { contentsBegin?: unknown }).contentsBegin
-  const titleBegin = headline.contentsBegin
-  if (typeof sectionBegin !== 'number' || typeof titleBegin !== 'number') return null
-  if (sectionBegin < 0 || titleBegin < sectionBegin || titleBegin > source.length) {
-    return null
-  }
-
-  const prefix = source.slice(sectionBegin, titleBegin)
-  // Structural prefix only — title text (which may literally say "TODO") is excluded.
-  const match = prefix.match(
-    /^(\*+)(\s+)(COMMENT\s+)?(TODO|DONE)?(\s*\[#[ABC]\])?(\s*)$/,
-  )
-  if (!match) return null
-
-  const stars = match[1]!
-  const gap = match[2]!
-  const comment = match[3] ?? ''
-  const keyword = (match[4] as 'TODO' | 'DONE' | undefined) ?? null
-
-  if (keyword !== expected) return null
-
-  if (keyword) {
-    const localStart = stars.length + gap.length + comment.length
-    return {
-      start: sectionBegin + localStart,
-      end: sectionBegin + localStart + keyword.length,
-      keyword,
-    }
-  }
-
-  // Insertion point: after stars + gap + optional COMMENT (before priority/title).
-  const insertAt = sectionBegin + stars.length + gap.length + comment.length
-  return { start: insertAt, end: insertAt, keyword: null }
+  path: number[],
+  keywords: string[],
+): HeadlineContext {
+  const section = findSectionByPath(parseOrg(source), path)
+  if (!section) throw new RefuseWrite('headline path not found')
+  const headline = headlineAt(section)
+  if (!headline?.position) throw new RefuseWrite('no source position for headline')
+  const start = headline.position.start.offset
+  const end = headline.position.end.offset
+  const parts = headParts(source.slice(start, end), keywords)
+  if (!parts) throw new RefuseWrite('unrecognised headline shape')
+  const nl = source.indexOf('\n', end)
+  return { section, start, end, eol: nl < 0 ? source.length : nl, parts }
 }
 
-/**
- * Byte-splice only the TODO/DONE token (or insert/remove it).
- * Refuses (ok:false) when the span cannot be verified — never falls back to
- * full-file uniorg-stringify.
- */
+/** Absorb a length change into the tag padding so org-tags-column stays put. */
+function repadTags(source: string, ctx: HeadlineContext, delta: number): Edit | null {
+  if (delta === 0) return null
+  const tail = source.slice(ctx.end, ctx.eol)
+  const m = tail.match(/^([ \t]{2,})(:[^\s:]+(?::[^\s:]+)*:)[ \t]*$/)
+  if (!m) return null
+  return {
+    start: ctx.end,
+    end: ctx.end + m[1]!.length,
+    text: ' '.repeat(Math.max(1, m[1]!.length - delta)),
+  }
+}
+
+function spliceHead(source: string, ctx: HeadlineContext, edit: Edit): string {
+  const delta = edit.text.length - (edit.end - edit.start)
+  return applyEdits(source, [edit, repadTags(source, ctx, delta)])
+}
+
 export function updateTodoInSource(
   source: string,
   path: number[],
   todo: TodoKeyword,
-): OrgWriteResult {
-  const tree = parseOrg(source)
-  const section = findSectionByPath(tree, path)
-  if (!section) {
-    return { ok: false, reason: `No section at path [${path.join(', ')}]` }
+): string {
+  const ctx = headlineContext(source, path, todoKeywordsFrom(source))
+  const { parts, start } = ctx
+  if (parts.keyword && todo) {
+    return spliceHead(source, ctx, {
+      start: start + parts.keyword.start,
+      end: start + parts.keyword.end,
+      text: todo,
+    })
   }
-  const headline = headlineAt(section)
-  if (!headline) {
-    return { ok: false, reason: `No headline at path [${path.join(', ')}]` }
+  if (parts.keyword && !todo) {
+    return spliceHead(source, ctx, {
+      start: start + parts.keyword.start,
+      end: start + parts.keyword.end + parts.keyword.gap,
+      text: '',
+    })
   }
-
-  const current = asTodo(headline.todoKeyword)
-  if (current === todo) {
-    return { ok: true, source } // zero-edit identity
+  if (!parts.keyword && todo) {
+    return spliceHead(source, ctx, {
+      start: start + parts.starsEnd,
+      end: start + parts.starsEnd,
+      text: `${todo} `,
+    })
   }
-
-  const span = findTodoKeywordSpan(source, section, headline, current)
-  if (!span) {
-    return {
-      ok: false,
-      reason: `Unsure of TODO keyword span at path [${path.join(', ')}] (refuse splice)`,
-    }
-  }
-
-  // Double-check line keyword matches AST before mutating bytes.
-  if (span.keyword !== current) {
-    return {
-      ok: false,
-      reason: `AST todo (${current}) does not match line keyword (${span.keyword})`,
-    }
-  }
-
-  let nextSource: string
-  if (todo === null) {
-    // Remove keyword and one following space if present.
-    if (!span.keyword) {
-      return { ok: true, source }
-    }
-    let end = span.end
-    if (source[end] === ' ') end += 1
-    nextSource = source.slice(0, span.start) + source.slice(end)
-  } else if (span.keyword) {
-    // Replace TODO ↔ DONE in place (same length).
-    nextSource = source.slice(0, span.start) + todo + source.slice(span.end)
-  } else {
-    // Insert "TODO "/"DONE " at the keyword position.
-    nextSource = source.slice(0, span.start) + `${todo} ` + source.slice(span.end)
-  }
-
-  // Sanity: re-parse and confirm the target headline now has the desired todo.
-  const verify = parseOrg(nextSource)
-  const verifySection = findSectionByPath(verify, path)
-  const verifyHeadline = verifySection ? headlineAt(verifySection) : null
-  if (!verifyHeadline || asTodo(verifyHeadline.todoKeyword) !== todo) {
-    return {
-      ok: false,
-      reason: `Splice verification failed for path [${path.join(', ')}]`,
-    }
-  }
-
-  return { ok: true, source: nextSource }
+  return source
 }
 
 export function cycleTodo(todo: TodoKeyword): TodoKeyword {
@@ -377,7 +422,7 @@ export function cyclePriority(priority: Priority): Priority {
   return 'A'
 }
 
-export function markDoneInSource(source: string, path: number[]): OrgWriteResult {
+export function markDoneInSource(source: string, path: number[]): string {
   return updateTodoInSource(source, path, 'DONE')
 }
 
@@ -386,15 +431,13 @@ export function updateTitleInSource(
   path: number[],
   title: string,
 ): string {
-  const tree = parseOrg(source)
-  const section = findSectionByPath(tree, path)
-  if (!section) return source
-  const headline = headlineAt(section)
-  if (!headline) return source
-  headline.rawValue = title
-  const textNode: Text = { type: 'text', value: title }
-  headline.children = [textNode]
-  return stringifyOrg(tree)
+  if (/[\r\n]/.test(title)) throw new RefuseWrite('title contains a newline')
+  const ctx = headlineContext(source, path, todoKeywordsFrom(source))
+  return spliceHead(source, ctx, {
+    start: ctx.start + ctx.parts.titleStart,
+    end: ctx.end,
+    text: title,
+  })
 }
 
 export function updatePriorityInSource(
@@ -402,13 +445,23 @@ export function updatePriorityInSource(
   path: number[],
   priority: Priority,
 ): string {
-  const tree = parseOrg(source)
-  const section = findSectionByPath(tree, path)
-  if (!section) return source
-  const headline = headlineAt(section)
-  if (!headline) return source
-  headline.priority = priority
-  return stringifyOrg(tree)
+  const ctx = headlineContext(source, path, todoKeywordsFrom(source))
+  const { parts, start } = ctx
+  const at = start + (parts.priority ? parts.priority.start : parts.titleStart)
+  if (parts.priority && priority) {
+    return spliceHead(source, ctx, { start: at, end: start + parts.priority.end, text: `[#${priority}]` })
+  }
+  if (parts.priority && !priority) {
+    return spliceHead(source, ctx, {
+      start: at,
+      end: start + parts.priority.end + parts.priority.gap,
+      text: '',
+    })
+  }
+  if (!parts.priority && priority) {
+    return spliceHead(source, ctx, { start: at, end: at, text: `[#${priority}] ` })
+  }
+  return source
 }
 
 export function updateTagsInSource(
@@ -416,14 +469,15 @@ export function updateTagsInSource(
   path: number[],
   tags: string[],
 ): string {
-  const tree = parseOrg(source)
-  const section = findSectionByPath(tree, path)
-  if (!section) return source
-  const headline = headlineAt(section)
-  if (!headline) return source
+  const ctx = headlineContext(source, path, todoKeywordsFrom(source))
+  const tail = source.slice(ctx.end, ctx.eol)
+  const m = tail.match(/^([ \t]*)((?::[^\s:]+)+:)?[ \t]*$/)
+  if (!m) throw new RefuseWrite('unrecognised tag region')
   const cleaned = normalizeTags(tags)
-  headline.tags = cleaned
-  return stringifyOrg(tree)
+  const cookie = cleaned.length > 0 ? `:${cleaned.join(':')}:` : ''
+  const hadPad = (m[1] ?? '').length
+  const pad = cookie ? (hadPad > 1 ? ' '.repeat(hadPad) : ' ') : ''
+  return applyEdits(source, [{ start: ctx.end, end: ctx.eol, text: pad + cookie }])
 }
 
 function sectionChildren(section: OrgNode): OrgNode[] | null {
@@ -437,32 +491,8 @@ function findPlanning(section: OrgNode): Planning | null {
   return (kids.find((c) => c.type === 'planning') as Planning | undefined) ?? null
 }
 
-function ensurePlanning(section: OrgNode): Planning {
-  const kids = sectionChildren(section)
-  if (!kids) throw new Error('section has no children')
-  const existing = findPlanning(section)
-  if (existing) return existing
-
-  const planning: Planning = {
-    type: 'planning',
-    closed: null,
-    deadline: null,
-    scheduled: null,
-  }
-  const headlineIndex = kids.findIndex((c) => c.type === 'headline')
-  const insertAt = headlineIndex >= 0 ? headlineIndex + 1 : 0
-  kids.splice(insertAt, 0, planning)
-  return planning
-}
-
-function prunePlanningIfEmpty(section: OrgNode): void {
-  const kids = sectionChildren(section)
-  if (!kids) return
-  const index = kids.findIndex((c) => c.type === 'planning')
-  if (index < 0) return
-  const planning = kids[index] as Planning
-  if (planning.scheduled || planning.deadline || planning.closed) return
-  kids.splice(index, 1)
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function setPlanningField(
@@ -471,18 +501,53 @@ function setPlanningField(
   field: 'scheduled' | 'deadline',
   date: DateParts | null,
 ): string {
-  const tree = parseOrg(source)
-  const section = findSectionByPath(tree, path)
-  if (!section) return source
-  if (date) {
-    const planning = ensurePlanning(section)
-    planning[field] = makeActiveTimestamp(date)
-  } else {
-    const planning = findPlanning(section)
-    if (planning) planning[field] = null
-    prunePlanningIfEmpty(section)
+  const ctx = headlineContext(source, path, todoKeywordsFrom(source))
+  const planning = findPlanning(ctx.section)
+  const ts = planning ? planning[field] : null
+  const label = field === 'scheduled' ? 'SCHEDULED' : 'DEADLINE'
+
+  // Change a date: splice the date field only. Time of day, repeaters and
+  // warning periods sit in the original bytes and are copied through.
+  if (date && ts) {
+    if (!ts.position) throw new RefuseWrite('no source position for timestamp')
+    const start = ts.position.start.offset
+    const end = ts.position.end.offset
+    const raw = source.slice(start, end)
+    const m = raw.match(/^([<[])(\d{4}-\d{2}-\d{2})(?:[ \t]+[^\s>\]]{2,3})?([\s\S]*)([>\]])$/)
+    if (!m) throw new RefuseWrite(`unrecognised timestamp: ${raw}`)
+    return applyEdits(source, [
+      { start, end, text: `${m[1]}${isoOf(date)} ${weekdayOf(date)}${m[3]}${m[4]}` },
+    ])
   }
-  return stringifyOrg(tree)
+
+  // Add: extend an existing planning line, or insert one under the headline.
+  if (date && !ts) {
+    const text = `${label}: <${isoOf(date)} ${weekdayOf(date)}>`
+    if (planning?.position) {
+      const at = planning.position.end.offset
+      return applyEdits(source, [{ start: at, end: at, text: ` ${text}` }])
+    }
+    return applyEdits(source, [{ start: ctx.eol, end: ctx.eol, text: `\n${text}` }])
+  }
+
+  // Clear: drop the keyword and its stamp; drop the line if nothing is left.
+  if (!date && ts) {
+    if (!planning?.position || !ts.position) throw new RefuseWrite('no source position for planning')
+    const pStart = planning.position.start.offset
+    const pEnd = planning.position.end.offset
+    const raw = source.slice(ts.position.start.offset, ts.position.end.offset)
+    const stripped = source
+      .slice(pStart, pEnd)
+      .replace(new RegExp(`${label}:[ \\t]*${escapeRe(raw)}[ \\t]*`), '')
+      .replace(/[ \t]+$/, '')
+    if (stripped.trim() === '') {
+      const lineEnd = source[pEnd] === '\n' ? pEnd + 1 : pEnd
+      return applyEdits(source, [{ start: pStart, end: lineEnd, text: '' }])
+    }
+    return applyEdits(source, [{ start: pStart, end: pEnd, text: stripped }])
+  }
+
+  return source
 }
 
 /**
