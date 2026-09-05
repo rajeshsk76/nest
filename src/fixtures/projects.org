@@ -22,3 +22,7 @@ Twenty minutes, no phone.
 
 ** TODO Plan Sunday cooking :home:errands:
 DEADLINE: <2026-09-06 Sun>
+| Item   | Qty |
+|--------+-----|
+| flour  | 1kg |
+| yeast  | 1   |
