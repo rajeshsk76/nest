@@ -1,0 +1,20 @@
+#+TITLE: Ops
+#+TODO: TODO NEXT WAITING | DONE CANCELLED
+
+* TODO Water the plants                                              :home:
+SCHEDULED: <2026-09-08 Tue 14:00 +1w>
+:PROPERTIES:
+:CREATED:  [2026-09-01 Tue 08:12]
+:STYLE:    habit
+:END:
+Notes about [[file:notes.org::*Plants][the plants]].
+
+* NEXT [#A] Ship the thing
+DEADLINE: <2026-09-12 Sat -2d>
+#+CAPTION: build steps
+#+BEGIN_SRC python -n :tangle build.py
+print("hi")
+#+END_SRC
+| step |  s |
+|------+----|
+| one  |  3 |

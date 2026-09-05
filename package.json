@@ -21,7 +21,7 @@
     "tauri:dev": "node scripts/free-port.mjs && tauri dev",
     "tauri:build": "tauri build",
     "free-port": "node scripts/free-port.mjs",
-    "conformance:zero-edit": "node scripts/conformance-zero-edit.mjs",
+    "conformance:zero-edit": "vite-node scripts/conformance-zero-edit.mjs",
     "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs --dry-run"
   },
   "repository": {
