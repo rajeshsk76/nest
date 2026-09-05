@@ -9,7 +9,9 @@ import type { NestFileId } from './fixtures'
 import {
   captureTodo,
   listHeadlines,
+  changedRegions,
   markDoneInSource,
+  RefuseWrite,
   type DateParts,
   type Priority,
   type TodoKeyword,
@@ -35,6 +37,7 @@ import {
   readWorkspaceFiles,
   resetWorkspaceFiles,
   resolveWorkspaceOnce,
+  StaleFileError,
   writeWorkspaceFile,
 } from './lib/workspace'
 
@@ -104,10 +107,48 @@ export default function App() {
         await writeWorkspaceFile(folderPath, id, source)
       } catch (err) {
         console.error(err)
-        setStatus(`Failed to write ${id}.org to disk.`)
+        setStatus(
+          err instanceof StaleFileError
+            ? `${id}.org changed on disk. Reload before editing.`
+            : `Failed to write ${id}.org to disk.`,
+        )
       }
     },
     [folderPath],
+  )
+
+  // Mirror of `files` readable synchronously, so edits never run inside a
+  // state updater (updaters must stay pure and may run twice).
+  const filesRef = useRef(files)
+  useEffect(() => {
+    filesRef.current = files
+  }, [files])
+
+  /** Run a mutation, refuse anything that touches more than one region, then write. */
+  const applyEdit = useCallback(
+    (id: NestFileId, mutate: (source: string) => string) => {
+      const before = filesRef.current[id]
+      let after: string
+      try {
+        after = mutate(before)
+      } catch (err) {
+        if (err instanceof RefuseWrite) {
+          setStatus(`Nest won't edit ${id}.org: ${err.message}`)
+          return
+        }
+        throw err
+      }
+      if (after === before) return
+      const regions = changedRegions(before, after)
+      if (regions !== 1) {
+        setStatus(`Refused: that edit would change ${regions} regions of ${id}.org`)
+        return
+      }
+      filesRef.current = { ...filesRef.current, [id]: after }
+      setFiles((prev) => ({ ...prev, [id]: after }))
+      void persistFile(id, after)
+    },
+    [persistFile],
   )
 
   const activeSource = files[activeFile]
@@ -131,69 +172,45 @@ export default function App() {
   const showOnboarding = desktopReady && headlineCount === 0
 
   function patchFile(id: NestFileId, source: string) {
-    setFiles((prev) => ({ ...prev, [id]: source }))
-    void persistFile(id, source)
+    applyEdit(id, () => source)
   }
 
   function handleCapture(text: string) {
-    setFiles((prev) => {
-      const inbox = captureTodo(prev.inbox, text)
-      void persistFile('inbox', inbox)
-      return { ...prev, inbox }
-    })
+    applyEdit('inbox', (src) => captureTodo(src, text))
     setActiveFile('inbox')
     setView('editor')
   }
 
   function handleCycleTodo(path: number[], next: TodoKeyword) {
-    const result = updateTodoInSource(activeSource, path, next)
-    if (result.ok === false) {
-      setStatus(`TODO splice refused: ${result.reason}`)
-      return
-    }
-    patchFile(activeFile, result.source)
+    applyEdit(activeFile, (src) => updateTodoInSource(src, path, next))
   }
 
   function handleRename(path: number[], title: string) {
-    patchFile(activeFile, updateTitleInSource(activeSource, path, title))
+    applyEdit(activeFile, (src) => updateTitleInSource(src, path, title))
   }
 
   function handleSetPriority(path: number[], priority: Priority) {
-    patchFile(activeFile, updatePriorityInSource(activeSource, path, priority))
+    applyEdit(activeFile, (src) => updatePriorityInSource(src, path, priority))
   }
 
   function handleSetTags(path: number[], tags: string[]) {
-    patchFile(activeFile, updateTagsInSource(activeSource, path, tags))
+    applyEdit(activeFile, (src) => updateTagsInSource(src, path, tags))
   }
 
   function handleSetScheduled(path: number[], date: DateParts | null) {
-    patchFile(activeFile, updateScheduledInSource(activeSource, path, date))
+    applyEdit(activeFile, (src) => updateScheduledInSource(src, path, date))
   }
 
   function handleSetDeadline(path: number[], date: DateParts | null) {
-    patchFile(activeFile, updateDeadlineInSource(activeSource, path, date))
+    applyEdit(activeFile, (src) => updateDeadlineInSource(src, path, date))
   }
 
   function handleMarkDone(fileId: string, path: number[]) {
-    const id = fileId as NestFileId
-    setFiles((prev) => {
-      const result = markDoneInSource(prev[id], path)
-      if (result.ok === false) {
-        setStatus(`Mark DONE refused: ${result.reason}`)
-        return prev
-      }
-      void persistFile(id, result.source)
-      return { ...prev, [id]: result.source }
-    })
+    applyEdit(fileId as NestFileId, (src) => markDoneInSource(src, path))
   }
 
   function handleTodayPriority(fileId: string, path: number[], priority: Priority) {
-    const id = fileId as NestFileId
-    setFiles((prev) => {
-      const next = updatePriorityInSource(prev[id], path, priority)
-      void persistFile(id, next)
-      return { ...prev, [id]: next }
-    })
+    applyEdit(fileId as NestFileId, (src) => updatePriorityInSource(src, path, priority))
   }
 
   async function handleReset() {
