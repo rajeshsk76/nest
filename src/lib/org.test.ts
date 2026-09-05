@@ -9,7 +9,9 @@ import {
   parseOrg,
   roundTrip,
   stringifyOrg,
+  updateDeadlineInSource,
   updatePriorityInSource,
+  updateScheduledInSource,
   updateTagsInSource,
   updateTodoInSource,
 } from './org'
@@ -67,12 +69,14 @@ describe('org round-trip', () => {
     expect(markDoneInSource(SAMPLE, write.path)).toContain('* DONE Write tests')
   })
 
-  it('captures a TODO into inbox content', () => {
+  it('captures a TODO into inbox content with CREATED always', () => {
     const now = new Date('2026-09-05T09:30:00')
     const next = captureTodo('* TODO Existing\n', 'Ship Nest', { now })
     expect(next).toContain('* TODO Existing')
     expect(next).toContain('* TODO Ship Nest')
-    expect(next).toContain(':CREATED:')
+    expect(next).toContain(':PROPERTIES:')
+    expect(next).toContain(':CREATED: [2026-09-05 Sat 09:30]')
+    expect(next).toContain(':END:')
   })
 
   it('collects today agenda items', () => {
@@ -147,6 +151,7 @@ describe('priority and tags', () => {
     const now = new Date('2026-09-05T09:30:00')
     const next = captureTodo('* TODO Existing\n', 'Ship Nest #A :work:', { now })
     expect(next).toContain('* TODO [#A] Ship Nest :work:')
+    expect(next).toContain(':CREATED: [2026-09-05 Sat 09:30]')
     const headlines = listHeadlines(next, 'inbox')
     const ship = headlines.find((h) => h.title === 'Ship Nest')
     expect(ship?.priority).toBe('A')
@@ -184,5 +189,65 @@ describe('priority and tags', () => {
 
     const empty = filterTodayItems(items, { priorities: [], tags: [] })
     expect(empty).toHaveLength(items.length)
+  })
+})
+
+/**
+ * Compat badge — headline + TODO + priority + tags + CREATED + SCHEDULED
+ * must survive parse → stringify. CI runs this suite on every push/PR.
+ */
+describe('Org compat badge (round-trip)', () => {
+  const COMPAT = `* TODO [#A] Compat check :nest:ci:
+SCHEDULED: <2026-09-06 Sun>
+:PROPERTIES:
+:CREATED: [2026-09-05 Sat 09:30]
+:END:
+`
+
+  it('preserves headline, TODO, priority, tags, CREATED, SCHEDULED', () => {
+    const out = roundTrip(COMPAT)
+    expect(out).toContain('* TODO [#A] Compat check :nest:ci:')
+    expect(out).toContain(':PROPERTIES:')
+    expect(out).toContain(':CREATED: [2026-09-05 Sat 09:30]')
+    expect(out).toContain(':END:')
+    expect(out).toContain('SCHEDULED: <2026-09-06 Sun>')
+
+    const headlines = listHeadlines(out, 'compat')
+    expect(headlines).toHaveLength(1)
+    const h = headlines[0]!
+    expect(h.todo).toBe('TODO')
+    expect(h.priority).toBe('A')
+    expect(h.tags).toEqual(['nest', 'ci'])
+    expect(h.title).toBe('Compat check')
+    expect(h.scheduledDate).toEqual({ year: 2026, month: 9, day: 6 })
+  })
+
+  it('capture always emits CREATED and round-trips cleanly', () => {
+    const now = new Date('2026-09-05T09:30:00')
+    const captured = captureTodo('', 'Compat check #A :nest:', { now })
+    expect(captured).toContain('* TODO [#A] Compat check :nest:')
+    expect(captured).toMatch(/:CREATED:\s*\[2026-09-05 Sat 09:30\]/)
+    const again = roundTrip(captured)
+    expect(again).toContain('* TODO [#A] Compat check :nest:')
+    expect(again).toContain(':CREATED:')
+    expect(again).toContain(':PROPERTIES:')
+  })
+
+  it('SCHEDULED / DEADLINE setters write real Org timestamps', () => {
+    const base = '* TODO Plan week\n'
+    const withSched = updateScheduledInSource(base, [0], {
+      year: 2026,
+      month: 9,
+      day: 7,
+    })
+    expect(withSched).toContain('SCHEDULED: <2026-09-07 Mon>')
+    const withBoth = updateDeadlineInSource(withSched, [0], {
+      year: 2026,
+      month: 9,
+      day: 8,
+    })
+    expect(withBoth).toContain('DEADLINE: <2026-09-08 Tue>')
+    expect(roundTrip(withBoth)).toContain('SCHEDULED: <2026-09-07 Mon>')
+    expect(roundTrip(withBoth)).toContain('DEADLINE: <2026-09-08 Tue>')
   })
 })
