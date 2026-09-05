@@ -1,5 +1,5 @@
 import type { OrgNode, Planning } from "uniorg"
-import type { DateParts, Priority, TodoKeyword } from "./org-core"
+import type { DateParts, Priority } from "./org-core"
 import {
   RefuseWrite,
   applyEdits,

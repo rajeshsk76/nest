@@ -9,3 +9,10 @@ export {
 } from "./org-structural"
 export type { InlineMarkup } from "./org-markup"
 export { parseInlineMarkup } from "./org-markup"
+export type { OrgTableRow, OrgTableView, TableRowKind } from "./org-tables"
+export {
+  listTables,
+  serializeOrgTable,
+  updateTableCellInSource,
+  addTableRowInSource,
+} from "./org-tables"
