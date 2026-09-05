@@ -1,0 +1,15 @@
+#+TITLE: Slice 4 smoke — source blocks
+
+* Example snippet
+A typescript block under this headline. Edit the body in Nest; fences must stay valid Org.
+
+#+BEGIN_SRC typescript
+const greeting = 'hello nest'
+console.log(greeting)
+#+END_SRC
+
+* Unrelated headline
+This headline must not move when the source body is edited.
+
+** Nested note
+Body stays put.
