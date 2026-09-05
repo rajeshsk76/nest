@@ -134,9 +134,13 @@ export default function App() {
     filesRef.current = files
   }, [files])
 
-  /** Run a mutation, refuse anything that touches more than one region, then write. */
+  /** Run a mutation, refuse edits that smash too many regions, then write. */
   const applyEdit = useCallback(
-    (id: NestFileId, mutate: (source: string) => string) => {
+    (
+      id: NestFileId,
+      mutate: (source: string) => string,
+      opts: { maxRegions?: number } = {},
+    ) => {
       const before = filesRef.current[id]
       let after: string
       try {
@@ -150,7 +154,8 @@ export default function App() {
       }
       if (after === before) return
       const regions = changedRegions(before, after)
-      if (regions !== 1) {
+      const maxRegions = opts.maxRegions ?? 1
+      if (regions < 1 || regions > maxRegions) {
         setStatus(`Refused: that edit would change ${regions} regions of ${id}.org`)
         return
       }
@@ -249,7 +254,8 @@ export default function App() {
   }
 
   function handleMarkDone(fileId: string, path: number[]) {
-    applyEdit(fileId as NestFileId, (src) => markDoneInSource(src, path))
+    // Repeater Mark DONE may splice keyword + SCHEDULED/DEADLINE + LAST_REPEAT (≤3 hunks).
+    applyEdit(fileId as NestFileId, (src) => markDoneInSource(src, path), { maxRegions: 3 })
   }
 
   function handleTodayPriority(fileId: string, path: number[], priority: Priority) {
