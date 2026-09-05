@@ -74,13 +74,13 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
           <p className="muted">{stamped}</p>
         </div>
         <p className="muted small">
-          Open TODOs plus items SCHEDULED or DEADLINE for today. Filter by
-          priority or tag (sticky). Sorted A → B → C → none.
+          Open TODOs plus items SCHEDULED or DEADLINE for today. Tap priority
+          badges and tag chips to filter (sticky). Sorted A → B → C → none.
         </p>
       </header>
 
-      <div className="today-filters" aria-label="Today filters">
-        <div className="filter-group">
+      <div className="today-filters sticky-filters" aria-label="Today filters">
+        <div className="filter-group" role="group" aria-label="Priority filters">
           <span className="filter-label">Priority</span>
           {(['A', 'B', 'C', 'none'] as const).map((p) => {
             const active = filters.priorities.includes(p)
@@ -88,8 +88,13 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
               <button
                 key={p}
                 type="button"
-                className={`filter-chip${active ? ' active' : ''}${p !== 'none' ? ` priority-${p}` : ''}`}
+                className={`filter-chip priority-filter${active ? ' active' : ''}${p !== 'none' ? ` priority-${p}` : ' priority-none-filter'}`}
                 aria-pressed={active}
+                title={
+                  p === 'none'
+                    ? 'Show items with no priority'
+                    : `Show priority #${p}`
+                }
                 onClick={() =>
                   setFilters((prev) => ({
                     ...prev,
@@ -102,10 +107,12 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
             )
           })}
         </div>
-        {availableTags.length > 0 && (
-          <div className="filter-group">
-            <span className="filter-label">Tags</span>
-            {availableTags.map((tag) => {
+        <div className="filter-group" role="group" aria-label="Tag filters">
+          <span className="filter-label">Tags</span>
+          {availableTags.length === 0 ? (
+            <span className="filter-empty muted small">No tags yet — add :tag: on a headline</span>
+          ) : (
+            availableTags.map((tag) => {
               const active = filters.tags.includes(tag)
               return (
                 <button
@@ -113,6 +120,7 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
                   type="button"
                   className={`filter-chip tag-filter${active ? ' active' : ''}`}
                   aria-pressed={active}
+                  title={`Filter :${tag}:`}
                   onClick={() =>
                     setFilters((prev) => ({
                       ...prev,
@@ -123,9 +131,9 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
                   :{tag}:
                 </button>
               )
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
         {hasFilters && (
           <button
             type="button"
@@ -138,7 +146,10 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
       </div>
 
       {items.length === 0 ? (
-        <p className="empty">Nothing for today. Enjoy the quiet.</p>
+        <div className="empty-state compact">
+          <p className="empty-title">Nothing for today</p>
+          <p className="empty-body">Capture a TODO, or enjoy the quiet.</p>
+        </div>
       ) : visible.length === 0 ? (
         <p className="empty">No items match these filters.</p>
       ) : (
@@ -179,9 +190,20 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
                 )}
                 <span className="today-title">{item.title}</span>
                 {item.tags.map((tag) => (
-                  <span key={tag} className="tag">
+                  <button
+                    key={tag}
+                    type="button"
+                    className="tag tag-chip today-tag-chip"
+                    title={`Filter :${tag}:`}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        tags: prev.tags.includes(tag) ? prev.tags : [...prev.tags, tag],
+                      }))
+                    }
+                  >
                     :{tag}:
-                  </span>
+                  </button>
                 ))}
                 <span className="muted small">{item.fileId}.org</span>
               </div>
