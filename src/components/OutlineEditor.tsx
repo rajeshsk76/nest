@@ -3,13 +3,16 @@ import {
   cyclePriority,
   cycleTodo,
   listHeadlines,
+  listTables,
   normalizeTag,
   type DateParts,
   type HeadlineView,
+  type OrgTableView,
   type Priority,
   type TodoKeyword,
 } from '../lib/org'
 import { MarkupText } from './MarkupText'
+import { OrgTableEditor, sameHeadlinePath } from './OrgTableEditor'
 import { PlanningEditor } from './PlanningEditor'
 
 interface OutlineEditorProps {
@@ -25,6 +28,8 @@ interface OutlineEditorProps {
   onDemote: (path: number[]) => void
   onMove: (path: number[], direction: 'up' | 'down') => void
   onInsertHeading: (path: number[]) => void
+  onUpdateTableCell: (tableIndex: number, row: number, col: number, value: string) => void
+  onAddTableRow: (tableIndex: number) => void
 }
 
 function TodoBadge({
@@ -232,6 +237,26 @@ function hasChildHeadlines(headlines: HeadlineView[], item: HeadlineView): boole
   return headlines.some((h) => pathPrefix(item.path, h.path) && h.path.length === item.path.length + 1)
 }
 
+
+function isTableHiddenByFold(
+  table: OrgTableView,
+  folded: Set<string>,
+  headlines: HeadlineView[],
+): boolean {
+  if (!table.headlinePath) return false
+  for (const other of headlines) {
+    if (!folded.has(other.id)) continue
+    // Hide body tables when the containing headline is folded, or any ancestor.
+    if (
+      other.path.length <= table.headlinePath.length &&
+      other.path.every((p, i) => table.headlinePath![i] === p)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 function isHiddenByFold(item: HeadlineView, folded: Set<string>, headlines: HeadlineView[]): boolean {
   for (const other of headlines) {
     if (!folded.has(other.id)) continue
@@ -244,6 +269,7 @@ function HeadlineRow({
   item,
   folded,
   hasChildren,
+  tables,
   onToggleFold,
   onCycleTodo,
   onRename,
@@ -255,10 +281,13 @@ function HeadlineRow({
   onDemote,
   onMove,
   onInsertHeading,
+  onUpdateTableCell,
+  onAddTableRow,
 }: {
   item: HeadlineView
   folded: boolean
   hasChildren: boolean
+  tables: OrgTableView[]
   onToggleFold: () => void
   onCycleTodo: (path: number[], next: TodoKeyword) => void
   onRename: (path: number[], title: string) => void
@@ -270,6 +299,8 @@ function HeadlineRow({
   onDemote: (path: number[]) => void
   onMove: (path: number[], direction: 'up' | 'down') => void
   onInsertHeading: (path: number[]) => void
+  onUpdateTableCell: (tableIndex: number, row: number, col: number, value: string) => void
+  onAddTableRow: (tableIndex: number) => void
 }) {
   function onRowKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
@@ -307,6 +338,7 @@ function HeadlineRow({
   }
 
   return (
+    <>
     <div
       className="headline-row"
       style={{ paddingLeft: `${(item.level - 1) * 1.25}rem` }}
@@ -401,6 +433,21 @@ function HeadlineRow({
         </div>
       </div>
     </div>
+      {!folded &&
+        tables.map((table) => (
+          <div
+            key={`table-${table.index}`}
+            className="headline-table"
+            style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}
+          >
+            <OrgTableEditor
+              table={table}
+              onUpdateCell={onUpdateTableCell}
+              onAddRow={onAddTableRow}
+            />
+          </div>
+        ))}
+    </>
   )
 }
 
@@ -417,8 +464,11 @@ export function OutlineEditor({
   onDemote,
   onMove,
   onInsertHeading,
+  onUpdateTableCell,
+  onAddTableRow,
 }: OutlineEditorProps) {
   const headlines = useMemo(() => listHeadlines(source, fileId), [source, fileId])
+  const tables = useMemo(() => listTables(source), [source])
   // Fold is visibility-only — never written to disk.
   const [folded, setFolded] = useState<Set<string>>(() => new Set())
 
@@ -444,14 +494,31 @@ export function OutlineEditor({
 
   const visible = headlines.filter((item) => !isHiddenByFold(item, folded, headlines))
 
+  const rootTables = tables.filter(
+    (t) => t.headlinePath === null && !isTableHiddenByFold(t, folded, headlines),
+  )
+
   return (
     <div className="outline">
+      {rootTables.map((table) => (
+        <OrgTableEditor
+          key={`root-table-${table.index}`}
+          table={table}
+          onUpdateCell={onUpdateTableCell}
+          onAddRow={onAddTableRow}
+        />
+      ))}
       {visible.map((item) => (
         <HeadlineRow
           key={item.id}
           item={item}
           folded={folded.has(item.id)}
           hasChildren={hasChildHeadlines(headlines, item)}
+          tables={tables.filter(
+            (t) =>
+              sameHeadlinePath(t.headlinePath, item.path) &&
+              !isTableHiddenByFold(t, folded, headlines),
+          )}
           onToggleFold={() => toggleFold(item.id)}
           onCycleTodo={onCycleTodo}
           onRename={onRename}
@@ -463,6 +530,8 @@ export function OutlineEditor({
           onDemote={onDemote}
           onMove={onMove}
           onInsertHeading={onInsertHeading}
+          onUpdateTableCell={onUpdateTableCell}
+          onAddTableRow={onAddTableRow}
         />
       ))}
     </div>
