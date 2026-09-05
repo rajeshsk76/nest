@@ -1,0 +1,21 @@
+#+TITLE: Slice 5 smoke — export
+
+* Hello Nest
+Body with *bold*, /italic/, and a [[https://example.com][link]].
+
+- alpha
+- beta
+  - nested
+
+| Item | Qty |
+|------+-----|
+| eggs | 12  |
+| milk | 1   |
+
+#+BEGIN_SRC typescript
+const greeting = 'hello nest'
+console.log(greeting)
+#+END_SRC
+
+* Unrelated headline
+This headline must still be present after export; the .org is never replaced.
