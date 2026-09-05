@@ -71,7 +71,8 @@ Browser mode remains fully supported for UI work without Rust.
 - Org tags `:tag:` / `:tag1:tag2:` (chips add/remove; rewrite .org)
 - Today sticky priority badges + tag chips for filtering; sort A → B → C → none
 - Capture parses `#A` / `[#B]` and trailing `:tag:` from the title text
-- Inline title editing (caret-stable) that writes back through uniorg stringify
+- Elegant markup in the outline (display only): *bold* /italic/ _underline_ +strike+ =verbatim= ~code~, clickable [[url][label]] / [[url]]; raw markers stay in the source panel and on disk
+- Inline title editing (click to edit raw Org; caret-stable) that byte-splices the title when you change it
 - Raw source panel for direct .org text edits
 - Capture appends TODO headlines with CREATED properties drawer (always on) to inbox.org
 - Today view: open TODOs plus SCHEDULED / DEADLINE for today; Mark DONE writes back
@@ -92,9 +93,9 @@ Browser mode remains fully supported for UI work without Rust.
 Not Emacs Org parity:
 
 - UI focuses on headlines, TODO/DONE, priorities, tags, planning timestamps, simple body text
-- Drawers, clocks, links, tables, properties drawers UI are best-effort via source edits
+- Drawers, clocks, tables, properties drawers UI are best-effort via source edits (outline shows emphasis + links for display)
 - Tag filter is AND (item must have every selected tag); no full agenda / refile
-- Title edits rebuild headline children as plain text
+- Title edits splice title bytes; display markup is parse-for-display only (not a structural rewrite)
 - Web: files live in memory + localStorage (sample files under data/ / public/ are seeds only)
 - Desktop: .org files on disk are authoritative; sync/multi-device is out of scope
 - No agenda beyond Today, no sync, auth, or AI
