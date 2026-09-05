@@ -13,7 +13,9 @@ import {
 } from './lib/org'
 import {
   fileMeta,
+  hasStoredFiles,
   loadFiles,
+  loadFilesWithRemoteSeed,
   resetFiles,
   saveFiles,
   type FilesState,
@@ -26,6 +28,17 @@ export default function App() {
   const [activeFile, setActiveFile] = useState<NestFileId>('inbox')
   const [view, setView] = useState<View>('editor')
   const [showSource, setShowSource] = useState(true)
+
+  useEffect(() => {
+    if (hasStoredFiles()) return
+    let cancelled = false
+    loadFilesWithRemoteSeed().then((seeded) => {
+      if (!cancelled) setFiles(seeded)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     saveFiles(files)

@@ -1,0 +1,24 @@
+#+TITLE: Projects
+
+* Nest
+** TODO Ship local-first outline editor
+SCHEDULED: <2026-09-05 Sat>
+Headlines, TODO/DONE, and stringify round-trip.
+
+** TODO Polish Today view
+DEADLINE: <2026-09-07 Mon>
+Show scheduled and deadline items for the current day.
+
+** TODO Write friendly README
+Explain week-1 scope and limitations.
+
+** DONE Choose uniorg for parse/stringify
+CLOSED: [2026-09-03 Wed]
+
+* Personal
+** TODO Evening walk
+SCHEDULED: <2026-09-05 Sat>
+Twenty minutes, no phone.
+
+** TODO Plan Sunday cooking
+DEADLINE: <2026-09-06 Sun>

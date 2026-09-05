@@ -1,0 +1,22 @@
+#+TITLE: Inbox
+
+* TODO Capture more ideas into Nest
+:PROPERTIES:
+:CREATED: [2026-09-04 Thu 10:00]
+:END:
+Quick thoughts land here first.
+
+* TODO Review Nest week-1 scope
+SCHEDULED: <2026-09-05 Sat>
+Confirm parse → edit → stringify feels solid.
+
+* TODO Buy oat milk
+DEADLINE: <2026-09-05 Sat>
+From the corner shop.
+
+* TODO Skim uniorg docs later
+Something for another day.
+
+* DONE Open the Nest starter
+CLOSED: [2026-09-04 Thu 18:30]
+It works.

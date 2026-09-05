@@ -13,7 +13,9 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL (usually http://localhost:5173).
+Open http://localhost:5173 (Vite binds 0.0.0.0:5173 with strictPort). The dev script uses a small restart wrapper so the server stays up if Vite exits unexpectedly.
+
+On install / before dev / preview, Nest auto-creates sample org files under data/ and mirrors them into public/ so the app can fetch them. Existing non-empty files are left alone. Open data/sample-inbox.org and data/projects.org in Emacs if you want to edit the seeds on disk.
 
 ```bash
 npm run build
@@ -29,8 +31,8 @@ npm run preview
 - Raw source panel for direct .org text edits
 - Capture appends TODO headlines (optional CREATED timestamp) to inbox.org
 - Today view: open TODOs plus SCHEDULED / DEADLINE for today; Mark DONE writes back
-- Seed fixtures in src/fixtures so first load is useful
-- Browser localStorage persistence (Reset fixtures restores seeds)
+- Seed fixtures in src/fixtures; first load prefers /sample-inbox.org and /projects.org when localStorage is empty
+- Browser localStorage persistence (Reset fixtures restores embedded seeds)
 
 ## Stack
 
@@ -45,12 +47,17 @@ Not Emacs Org parity:
 - UI focuses on headlines, TODO/DONE, planning timestamps, simple body text
 - Tags, priorities, drawers, clocks, links, tables are best-effort via source edits
 - Title edits rebuild headline children as plain text
-- Files live in memory + localStorage, not on disk
+- Files live in memory + localStorage, not on disk (sample files under data/ / public/ are seeds only)
 - No agenda beyond Today, no sync, auth, or AI
 
 ## Project layout
 
 ```
+data/                 # auto-created sample .org files (edit in Emacs)
+public/               # mirrored samples for fetch on first load
+scripts/
+  ensure-sample-orgs.mjs
+  dev.mjs             # Vite stay-alive wrapper
 src/
   components/
   fixtures/
