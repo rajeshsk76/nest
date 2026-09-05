@@ -3,15 +3,18 @@ import {
   cyclePriority,
   cycleTodo,
   listHeadlines,
+  listSrcBlocks,
   listTables,
   normalizeTag,
   type DateParts,
   type HeadlineView,
+  type OrgSrcBlockView,
   type OrgTableView,
   type Priority,
   type TodoKeyword,
 } from '../lib/org'
 import { MarkupText } from './MarkupText'
+import { OrgSrcEditor } from './OrgSrcEditor'
 import { OrgTableEditor, sameHeadlinePath } from './OrgTableEditor'
 import { PlanningEditor } from './PlanningEditor'
 
@@ -30,6 +33,7 @@ interface OutlineEditorProps {
   onInsertHeading: (path: number[]) => void
   onUpdateTableCell: (tableIndex: number, row: number, col: number, value: string) => void
   onAddTableRow: (tableIndex: number) => void
+  onUpdateSrcBody: (blockIndex: number, body: string) => void
 }
 
 function TodoBadge({
@@ -238,23 +242,39 @@ function hasChildHeadlines(headlines: HeadlineView[], item: HeadlineView): boole
 }
 
 
-function isTableHiddenByFold(
-  table: OrgTableView,
+function isBodyHiddenByFold(
+  headlinePath: number[] | null,
   folded: Set<string>,
   headlines: HeadlineView[],
 ): boolean {
-  if (!table.headlinePath) return false
+  if (!headlinePath) return false
   for (const other of headlines) {
     if (!folded.has(other.id)) continue
-    // Hide body tables when the containing headline is folded, or any ancestor.
+    // Hide body blocks when the containing headline is folded, or any ancestor.
     if (
-      other.path.length <= table.headlinePath.length &&
-      other.path.every((p, i) => table.headlinePath![i] === p)
+      other.path.length <= headlinePath.length &&
+      other.path.every((p, i) => headlinePath[i] === p)
     ) {
       return true
     }
   }
   return false
+}
+
+function isTableHiddenByFold(
+  table: OrgTableView,
+  folded: Set<string>,
+  headlines: HeadlineView[],
+): boolean {
+  return isBodyHiddenByFold(table.headlinePath, folded, headlines)
+}
+
+function isSrcHiddenByFold(
+  block: OrgSrcBlockView,
+  folded: Set<string>,
+  headlines: HeadlineView[],
+): boolean {
+  return isBodyHiddenByFold(block.headlinePath, folded, headlines)
 }
 
 function isHiddenByFold(item: HeadlineView, folded: Set<string>, headlines: HeadlineView[]): boolean {
@@ -270,6 +290,7 @@ function HeadlineRow({
   folded,
   hasChildren,
   tables,
+  srcBlocks,
   onToggleFold,
   onCycleTodo,
   onRename,
@@ -283,11 +304,13 @@ function HeadlineRow({
   onInsertHeading,
   onUpdateTableCell,
   onAddTableRow,
+  onUpdateSrcBody,
 }: {
   item: HeadlineView
   folded: boolean
   hasChildren: boolean
   tables: OrgTableView[]
+  srcBlocks: OrgSrcBlockView[]
   onToggleFold: () => void
   onCycleTodo: (path: number[], next: TodoKeyword) => void
   onRename: (path: number[], title: string) => void
@@ -301,6 +324,7 @@ function HeadlineRow({
   onInsertHeading: (path: number[]) => void
   onUpdateTableCell: (tableIndex: number, row: number, col: number, value: string) => void
   onAddTableRow: (tableIndex: number) => void
+  onUpdateSrcBody: (blockIndex: number, body: string) => void
 }) {
   function onRowKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
@@ -434,19 +458,28 @@ function HeadlineRow({
       </div>
     </div>
       {!folded &&
-        tables.map((table) => (
-          <div
-            key={`table-${table.index}`}
-            className="headline-table"
-            style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}
-          >
-            <OrgTableEditor
-              table={table}
-              onUpdateCell={onUpdateTableCell}
-              onAddRow={onAddTableRow}
-            />
-          </div>
-        ))}
+        [
+          ...tables.map((table) => ({ kind: 'table' as const, start: table.start, table })),
+          ...srcBlocks.map((block) => ({ kind: 'src' as const, start: block.start, block })),
+        ]
+          .sort((a, b) => a.start - b.start)
+          .map((entry) => (
+            <div
+              key={entry.kind === 'table' ? `table-${entry.table.index}` : `src-${entry.block.index}`}
+              className={entry.kind === 'table' ? 'headline-table' : 'headline-src'}
+              style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}
+            >
+              {entry.kind === 'table' ? (
+                <OrgTableEditor
+                  table={entry.table}
+                  onUpdateCell={onUpdateTableCell}
+                  onAddRow={onAddTableRow}
+                />
+              ) : (
+                <OrgSrcEditor block={entry.block} onUpdateBody={onUpdateSrcBody} />
+              )}
+            </div>
+          ))}
     </>
   )
 }
@@ -466,9 +499,11 @@ export function OutlineEditor({
   onInsertHeading,
   onUpdateTableCell,
   onAddTableRow,
+  onUpdateSrcBody,
 }: OutlineEditorProps) {
   const headlines = useMemo(() => listHeadlines(source, fileId), [source, fileId])
   const tables = useMemo(() => listTables(source), [source])
+  const srcBlocks = useMemo(() => listSrcBlocks(source), [source])
   // Fold is visibility-only — never written to disk.
   const [folded, setFolded] = useState<Set<string>>(() => new Set())
 
@@ -497,17 +532,33 @@ export function OutlineEditor({
   const rootTables = tables.filter(
     (t) => t.headlinePath === null && !isTableHiddenByFold(t, folded, headlines),
   )
+  const rootSrc = srcBlocks.filter(
+    (b) => b.headlinePath === null && !isSrcHiddenByFold(b, folded, headlines),
+  )
 
   return (
     <div className="outline">
-      {rootTables.map((table) => (
-        <OrgTableEditor
-          key={`root-table-${table.index}`}
-          table={table}
-          onUpdateCell={onUpdateTableCell}
-          onAddRow={onAddTableRow}
-        />
-      ))}
+      {[
+        ...rootTables.map((table) => ({ kind: 'table' as const, start: table.start, table })),
+        ...rootSrc.map((block) => ({ kind: 'src' as const, start: block.start, block })),
+      ]
+        .sort((a, b) => a.start - b.start)
+        .map((entry) =>
+          entry.kind === 'table' ? (
+            <OrgTableEditor
+              key={`root-table-${entry.table.index}`}
+              table={entry.table}
+              onUpdateCell={onUpdateTableCell}
+              onAddRow={onAddTableRow}
+            />
+          ) : (
+            <OrgSrcEditor
+              key={`root-src-${entry.block.index}`}
+              block={entry.block}
+              onUpdateBody={onUpdateSrcBody}
+            />
+          ),
+        )}
       {visible.map((item) => (
         <HeadlineRow
           key={item.id}
@@ -518,6 +569,11 @@ export function OutlineEditor({
             (t) =>
               sameHeadlinePath(t.headlinePath, item.path) &&
               !isTableHiddenByFold(t, folded, headlines),
+          )}
+          srcBlocks={srcBlocks.filter(
+            (b) =>
+              sameHeadlinePath(b.headlinePath, item.path) &&
+              !isSrcHiddenByFold(b, folded, headlines),
           )}
           onToggleFold={() => toggleFold(item.id)}
           onCycleTodo={onCycleTodo}
@@ -532,6 +588,7 @@ export function OutlineEditor({
           onInsertHeading={onInsertHeading}
           onUpdateTableCell={onUpdateTableCell}
           onAddTableRow={onAddTableRow}
+          onUpdateSrcBody={onUpdateSrcBody}
         />
       ))}
     </div>
