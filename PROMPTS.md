@@ -49,7 +49,7 @@ Promote / demote: change star count on the current headline and its children
 Move subtree up / down among siblings
 Insert heading (same level) without destroying body/drawers
 Done when: fold does not write disk; promote/demote/move go through byte-splice; Emacs still folds the same tree.
-Slice 3 — Transparent tables
+Slice 3 — Transparent tables ✅ shipped
 Detect | col | col | blocks
 Edit a cell in UI; rewrite only that table region
 Tab between cells; add row
@@ -100,5 +100,5 @@ UI in existing src/components/ — calm, whitespace, monospace accents, no neon
 Desktop writes go through src/lib/workspace.ts
 Update README “What works” and PLAN.md after each slice
 If a slice fights the round-trip, shrink the slice. Integrity beats features.
-Slices 1–2 shipped. Start with Slice 3 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
+Slices 1–3 shipped. Start with Slice 4 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
 END PROMPT
