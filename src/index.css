@@ -100,7 +100,7 @@ button {
 
 .capture {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
   gap: 0.65rem;
   align-items: center;
   padding: 0.85rem;
@@ -642,4 +642,245 @@ button.tag,
   margin-left: auto;
   font-size: 0.78rem;
   padding: 0.25rem 0.55rem;
+}
+
+
+/* V2.2 — sticky Today filters, planning, onboarding, empty state */
+
+.sticky-filters {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 rgba(42, 42, 40, 0.04);
+}
+
+.today-filters {
+  gap: 0.65rem 1rem;
+  padding: 0.75rem 0.85rem;
+  border-color: #d9d3c7;
+  background: #faf8f3;
+}
+
+.filter-chip {
+  padding: 0.22rem 0.65rem;
+  font-size: 0.78rem;
+  border-width: 1.5px;
+  min-height: 1.7rem;
+}
+
+.filter-chip.priority-filter:not(.active) {
+  background: #fff;
+  color: var(--ink);
+}
+
+.filter-chip.priority-A:not(.active) {
+  color: #7a4e3a;
+  border-color: #e4d0c6;
+  background: #fbf6f3;
+}
+
+.filter-chip.priority-B:not(.active) {
+  color: #6b5a3a;
+  border-color: #e2d8c4;
+  background: #faf7f0;
+}
+
+.filter-chip.priority-C:not(.active) {
+  color: #5a6570;
+  border-color: #d5dbe0;
+  background: #f4f6f8;
+}
+
+.filter-chip.tag-filter {
+  background: #f1eee7;
+  color: var(--ink);
+}
+
+.filter-chip.tag-filter.active {
+  background: var(--accent-soft);
+  border-color: #b7c5ba;
+  color: var(--accent);
+}
+
+.filter-empty {
+  font-family: var(--sans);
+  font-style: italic;
+}
+
+.today-tag-chip {
+  cursor: pointer;
+  border: none;
+}
+
+.today-tag-chip:hover {
+  background: #e8e3d8;
+  color: var(--ink);
+}
+
+.priority-badge {
+  min-width: 1.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.planning-editor {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.planning-field {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.1rem 0.3rem 0.1rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f7f5f1;
+}
+
+.planning-field.danger {
+  background: #faf3f1;
+  border-color: #e8d5d0;
+}
+
+.planning-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.planning-date {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 0.05rem 0;
+  max-width: 8.5rem;
+}
+
+.planning-quick,
+.planning-clear {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  padding: 0.05rem 0.25rem;
+  border-radius: 999px;
+}
+
+.planning-quick:hover,
+.planning-clear:hover {
+  color: var(--ink);
+  background: rgba(42, 42, 40, 0.06);
+}
+
+.onboarding {
+  padding: 2rem 1.6rem 2.2rem;
+  max-width: 34rem;
+}
+
+.onboarding-kicker {
+  margin: 0 0 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.onboarding h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-lead {
+  margin: 0 0 1.35rem;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.onboarding-lead code,
+.onboarding-hints code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: #f1eee7;
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.3rem;
+}
+
+.onboarding-hints {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+
+.onboarding-hints li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  align-items: center;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: #fff;
+}
+
+.onboarding-hints strong {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--accent);
+  min-width: 5.5rem;
+}
+
+.onboarding-hints span {
+  color: var(--muted);
+  font-size: 0.92rem;
+  flex: 1 1 12rem;
+}
+
+.onboarding-hints button {
+  margin-left: auto;
+}
+
+.empty-state {
+  padding: 1.25rem 0.25rem 0.5rem;
+}
+
+.empty-state.compact {
+  padding: 1rem 0.15rem;
+}
+
+.empty-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.empty-body {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 700px) {
+  .onboarding-hints li {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-hints span,
+  .onboarding-hints button {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
 }
