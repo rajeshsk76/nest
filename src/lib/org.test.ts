@@ -1,1 +1,1 @@
-FILE_REF:/workspace/nest/src/lib/org.test.ts
+file:///workspace/nest/src/lib/org.test.ts
