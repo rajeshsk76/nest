@@ -17,6 +17,9 @@ From the corner shop. Unprioritized + tagged.
 * TODO [#C] Skim uniorg docs later :nest:reading:
 Something for another day.
 
+* TODO Try *bold* /italic/ _under_ +strike+ =verb= ~code~ and [[https://orgmode.org][Org mode]] :nest:markup:
+Emphasis and a link — display only; disk stays raw Org.
+
 * DONE Open the Nest starter
 CLOSED: [2026-09-04 Thu 18:30]
 It works.
