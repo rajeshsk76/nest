@@ -25,6 +25,7 @@
 | **Slice 1** | Elegant markup in outline (emphasis + links, display only; disk stays raw Org) |
 | **Slice 2** | Structural editing: fold (view only); promote/demote/move/insert via byte-splice |
 | **Slice 3** | Transparent tables: parse/edit/add-row via table-span byte-splice; Tab between cells |
+| **Slice 4** | Superior source code: detect #+BEGIN_SRC; language badge + monospace body; interior-only splice |
 
 **Repo:** https://github.com/rajeshsk76/nest
 
@@ -98,6 +99,7 @@ V2.2 habit polish (caret / CREATED / Today chips / CI / onboarding) ships before
 | 2026-09-05 | Slice 1 elegant markup: display parse only; zero-edit / no structural rewrite of unedited spans |
 | 2026-09-05 | Slice 2 structural editing: fold = visibility only; promote/demote/move/insert byte-splice |
 | 2026-09-05 | Slice 3 transparent tables: splice only table region; preserve outside bytes + TBLFM |
+| 2026-09-05 | Slice 4 superior source code: splice only src interior; preserve fences; never execute |
 
 ---
 

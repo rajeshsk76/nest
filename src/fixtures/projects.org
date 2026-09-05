@@ -12,6 +12,10 @@ Show scheduled and deadline items; filter by priority/tag.
 ** TODO Write friendly README :nest:docs:
 Explain week-1 scope and limitations.
 
+#+BEGIN_SRC typescript
+export const nestTagline = 'Org mode without Emacs'
+#+END_SRC
+
 ** DONE Choose uniorg for parse/stringify :nest:
 CLOSED: [2026-09-03 Wed]
 
