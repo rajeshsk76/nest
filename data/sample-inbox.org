@@ -1,20 +1,20 @@
 #+TITLE: Inbox
 
-* TODO Capture more ideas into Nest
+* TODO [#A] Capture more ideas into Nest :inbox:nest:
 :PROPERTIES:
 :CREATED: [2026-09-04 Thu 10:00]
 :END:
-Quick thoughts land here first.
+Quick thoughts land here first. Priority A + tags demo.
 
-* TODO Review Nest week-1 scope
+* TODO [#B] Review Nest week-1 scope :nest:
 SCHEDULED: <2026-09-05 Sat>
 Confirm parse → edit → stringify feels solid.
 
-* TODO Buy oat milk
+* TODO Buy oat milk :errands:home:
 DEADLINE: <2026-09-05 Sat>
-From the corner shop.
+From the corner shop. Unprioritized + tagged.
 
-* TODO Skim uniorg docs later
+* TODO [#C] Skim uniorg docs later :nest:reading:
 Something for another day.
 
 * DONE Open the Nest starter

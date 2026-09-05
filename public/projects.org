@@ -1,24 +1,24 @@
 #+TITLE: Projects
 
 * Nest
-** TODO Ship local-first outline editor
+** TODO [#A] Ship local-first outline editor :nest:work:
 SCHEDULED: <2026-09-05 Sat>
-Headlines, TODO/DONE, and stringify round-trip.
+Headlines, TODO/DONE, priorities, tags, and stringify round-trip.
 
-** TODO Polish Today view
+** TODO [#B] Polish Today view :nest:ui:
 DEADLINE: <2026-09-07 Mon>
-Show scheduled and deadline items for the current day.
+Show scheduled and deadline items; filter by priority/tag.
 
-** TODO Write friendly README
+** TODO Write friendly README :nest:docs:
 Explain week-1 scope and limitations.
 
-** DONE Choose uniorg for parse/stringify
+** DONE Choose uniorg for parse/stringify :nest:
 CLOSED: [2026-09-03 Wed]
 
 * Personal
-** TODO Evening walk
+** TODO [#C] Evening walk :health:home:
 SCHEDULED: <2026-09-05 Sat>
 Twenty minutes, no phone.
 
-** TODO Plan Sunday cooking
+** TODO Plan Sunday cooking :home:errands:
 DEADLINE: <2026-09-06 Sun>
