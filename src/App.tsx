@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CaptureBar } from './components/CaptureBar'
 import { FolderBar } from './components/FolderBar'
+import { OnboardingPanel } from './components/OnboardingPanel'
 import { OutlineEditor } from './components/OutlineEditor'
 import { SourcePanel } from './components/SourcePanel'
 import { TodayView } from './components/TodayView'
 import type { NestFileId } from './fixtures'
 import {
   captureTodo,
+  listHeadlines,
   markDoneInSource,
+  type DateParts,
   type Priority,
   type TodoKeyword,
+  updateDeadlineInSource,
   updatePriorityInSource,
+  updateScheduledInSource,
   updateTagsInSource,
   updateTitleInSource,
   updateTodoInSource,
@@ -117,14 +122,22 @@ export default function App() {
     [files],
   )
 
+  const headlineCount = useMemo(() => {
+    let n = 0
+    for (const f of fileList) n += listHeadlines(f.source, f.id).length
+    return n
+  }, [fileList])
+
+  const showOnboarding = desktopReady && headlineCount === 0
+
   function patchFile(id: NestFileId, source: string) {
     setFiles((prev) => ({ ...prev, [id]: source }))
     void persistFile(id, source)
   }
 
-  function handleCapture(text: string, withTimestamp: boolean) {
+  function handleCapture(text: string) {
     setFiles((prev) => {
-      const inbox = captureTodo(prev.inbox, text, { withTimestamp })
+      const inbox = captureTodo(prev.inbox, text)
       void persistFile('inbox', inbox)
       return { ...prev, inbox }
     })
@@ -146,6 +159,14 @@ export default function App() {
 
   function handleSetTags(path: number[], tags: string[]) {
     patchFile(activeFile, updateTagsInSource(activeSource, path, tags))
+  }
+
+  function handleSetScheduled(path: number[], date: DateParts | null) {
+    patchFile(activeFile, updateScheduledInSource(activeSource, path, date))
+  }
+
+  function handleSetDeadline(path: number[], date: DateParts | null) {
+    patchFile(activeFile, updateDeadlineInSource(activeSource, path, date))
   }
 
   function handleMarkDone(fileId: string, path: number[]) {
@@ -186,6 +207,14 @@ export default function App() {
     setFiles(nextFiles)
     setCreatedDefault(false)
     setStatus(null)
+  }
+
+  function focusCapture() {
+    const el = document.getElementById('capture-input')
+    if (el instanceof HTMLInputElement) {
+      el.focus()
+      el.select()
+    }
   }
 
   return (
@@ -270,6 +299,13 @@ export default function App() {
           <p className="empty" style={{ padding: '1.2rem' }}>
             Opening Nest folder…
           </p>
+        ) : showOnboarding ? (
+          <OnboardingPanel
+            desktop={desktop}
+            onOpenFolder={desktop ? () => void handleChangeFolder() : undefined}
+            onGoToday={() => setView('today')}
+            onFocusCapture={focusCapture}
+          />
         ) : view === 'today' ? (
           <TodayView
             files={fileList}
@@ -293,6 +329,8 @@ export default function App() {
                 onRename={handleRename}
                 onSetPriority={handleSetPriority}
                 onSetTags={handleSetTags}
+                onSetScheduled={handleSetScheduled}
+                onSetDeadline={handleSetDeadline}
               />
             </section>
             {showSource && (
@@ -312,7 +350,7 @@ export default function App() {
             ? 'Local-first · plain .org files on disk'
             : 'Local-first · plain .org files in memory + localStorage'}
         </span>
-        <span>V2.1 · tags &amp; priorities · no sync, auth, or AI</span>
+        <span>V2.2 · CREATED · filters · caret · no sync, auth, or AI</span>
       </footer>
     </div>
   )
