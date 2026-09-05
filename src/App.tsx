@@ -146,7 +146,12 @@ export default function App() {
   }
 
   function handleCycleTodo(path: number[], next: TodoKeyword) {
-    patchFile(activeFile, updateTodoInSource(activeSource, path, next))
+    const result = updateTodoInSource(activeSource, path, next)
+    if (result.ok === false) {
+      setStatus(`TODO splice refused: ${result.reason}`)
+      return
+    }
+    patchFile(activeFile, result.source)
   }
 
   function handleRename(path: number[], title: string) {
@@ -172,9 +177,13 @@ export default function App() {
   function handleMarkDone(fileId: string, path: number[]) {
     const id = fileId as NestFileId
     setFiles((prev) => {
-      const next = markDoneInSource(prev[id], path)
-      void persistFile(id, next)
-      return { ...prev, [id]: next }
+      const result = markDoneInSource(prev[id], path)
+      if (result.ok === false) {
+        setStatus(`Mark DONE refused: ${result.reason}`)
+        return prev
+      }
+      void persistFile(id, result.source)
+      return { ...prev, [id]: result.source }
     })
   }
 
