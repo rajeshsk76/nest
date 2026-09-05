@@ -1,8 +1,9 @@
 # Falsification: SCHEDULED repeater round-trip
 
-**Date:** 2026-09-05
+**Date:** 2026-09-06
 **Verdict (AST regenerate): FAIL**
 **Verdict (byte-splice mark DONE): PASS on file integrity**
+**Verdict (Emacs repeater semantics): PASS**
 
 ## Goal
 
@@ -13,7 +14,7 @@ Check whether Nest save path preserves a SCHEDULED repeater and whether Mark DON
 Today Mark DONE and outline TODO cycle splice only the keyword token.
 If the span is unsure, the write is refused (no full-file stringify fallback).
 Zero-edit identity is enforced by conformance:zero-edit (>=95% installer gate).
-Other edit kinds may still stringify. Emacs repeater advance is deferred.
+Repeater Mark DONE advances stamps, resets to first TODO state, writes property stamp (byte-splice). Non-repeater stays TODO->DONE only.
 
 ## Fixture (before)
 
@@ -32,11 +33,16 @@ SCHEDULED: <2026-09-05 Fri +1w>
 
 Byte-identical to input.
 
-## After Mark DONE (byte-splice path)
+## After Mark DONE (byte-splice path, repeater)
+
+With frozen now 2026-09-06 Sun 12:17:
 
 ```
-* DONE Water plants
-SCHEDULED: <2026-09-05 Fri +1w>
+* TODO Water plants
+SCHEDULED: <2026-09-12 Sat +1w>
+:PROPERTIES:
+:LAST_REPEAT: [2026-09-06 Sun 12:17]
+:END:
 
 #+BEGIN_SRC emacs-lisp
 (message "fragile")
@@ -45,7 +51,8 @@ SCHEDULED: <2026-09-05 Fri +1w>
 #+MACRO: greeting Hello $1
 ```
 
-Only the TODO to DONE token bytes change. Blank line, BEGIN_SRC casing, macro line, and +1w are preserved.
+Keyword resets to TODO; SCHEDULED advances by +1w; property stamp written.
+Fragile tokens preserved. Oracle wired in package scripts.
 
 ## After AST parse then stringify (still broken; not used for mark-done)
 
@@ -65,11 +72,11 @@ SCHEDULED: <2026-09-05 Fri +1w>
 | +1w survives Mark DONE | Yes (rawValue) | Yes (untouched bytes) |
 | Blank lines / BEGIN_SRC case preserved | No | Yes |
 | Byte-identical zero-edit save | No | Yes |
-| Emacs-correct DONE for repeaters | No | No (deferred) |
+| Emacs-correct DONE for repeaters | No | Yes (+ / .+ / ++) |
 
 ## Verdict
 
-FAIL on Emacs repeater semantics (date advance / state reset) — deferred.
+PASS on Emacs repeater Mark DONE semantics (date advance / state reset, property stamp) — shipped.
 
 PASS on the tonight gate: Mark DONE no longer destroys the file via full uniorg-stringify; zero-edit identity holds; conformance script enforces >=95% byte-identical zero-edit on the fixture set.
 
