@@ -1,0 +1,37 @@
+{
+  "productName": "Nest",
+  "version": "0.1.0",
+  "identifier": "app.nest.org",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "npx vite --host 0.0.0.0 --port 5173 --strictPort",
+    "beforeBuildCommand": "npx tsc -b && npx vite build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Nest",
+        "width": 1100,
+        "height": 780,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/henry.w@example.net",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "$schema": "https://schema.tauri.app/config/2"
+}
