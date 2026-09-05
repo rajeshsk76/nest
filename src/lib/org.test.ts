@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   captureTodo,
@@ -5,8 +6,10 @@ import {
   filterTodayItems,
   listHeadlines,
   markDoneInSource,
+  RefuseWrite,
   parseCaptureTitle,
   parseOrg,
+  changedRegions,
   roundTrip,
   stringifyOrg,
   updateDeadlineInSource,
@@ -66,13 +69,9 @@ describe('org round-trip', () => {
     const headlines = listHeadlines(SAMPLE, 'test')
     const write = headlines.find((h) => h.title === 'Write tests')!
     const next = updateTodoInSource(SAMPLE, write.path, 'DONE')
-    expect(next.ok).toBe(true)
-    if (next.ok === false) return
-    expect(next.source).toContain('* DONE Write tests')
+    expect(next).toContain('* DONE Write tests')
     const marked = markDoneInSource(SAMPLE, write.path)
-    expect(marked.ok).toBe(true)
-    if (marked.ok === false) return
-    expect(marked.source).toContain('* DONE Write tests')
+    expect(marked).toContain('* DONE Write tests')
   })
 
   it('captures a TODO into inbox content with CREATED always', () => {
@@ -212,11 +211,7 @@ SCHEDULED: <2026-09-06 Sun>
 
   it('preserves headline, TODO, priority, tags, CREATED, SCHEDULED', () => {
     const out = roundTrip(COMPAT)
-    expect(out).toContain('* TODO [#A] Compat check :nest:ci:')
-    expect(out).toContain(':PROPERTIES:')
-    expect(out).toContain(':CREATED: [2026-09-05 Sat 09:30]')
-    expect(out).toContain(':END:')
-    expect(out).toContain('SCHEDULED: <2026-09-06 Sun>')
+    expect(out).toBe(COMPAT)
 
     const headlines = listHeadlines(out, 'compat')
     expect(headlines).toHaveLength(1)
@@ -258,6 +253,28 @@ SCHEDULED: <2026-09-06 Sun>
   })
 })
 
+describe('byte fidelity against a real corpus file', () => {
+  const CORPUS = readFileSync(new URL('../fixtures/inbox.org', import.meta.url), 'utf8')
+
+  it('marking DONE changes exactly one line and nothing else', () => {
+    const out = markDoneInSource(CORPUS, [0])
+    expect(changedRegions(CORPUS, out)).toBe(1)
+    expect(out.split('\n').filter((l, i) => l !== CORPUS.split('\n')[i])).toHaveLength(1)
+  })
+
+  it('moving SCHEDULED keeps repeaters and time of day', () => {
+    const src = '* TODO habit\nSCHEDULED: <2026-09-08 Tue 14:00 +1w>\n'
+    expect(updateScheduledInSource(src, [0], { year: 2026, month: 9, day: 9 })).toBe(
+      '* TODO habit\nSCHEDULED: <2026-09-09 Wed 14:00 +1w>\n',
+    )
+  })
+
+  it('honours a file-local #+TODO: keyword set', () => {
+    const src = '#+TODO: TODO NEXT | DONE\n* NEXT ship it\n'
+    expect(updateTodoInSource(src, [0], 'DONE')).toBe('#+TODO: TODO NEXT | DONE\n* DONE ship it\n')
+  })
+})
+
 describe('byte-splice Org writes', () => {
   const REPEATER = `* TODO Water plants
 SCHEDULED: <2026-09-05 Fri +1w>
@@ -273,19 +290,17 @@ SCHEDULED: <2026-09-05 Fri +1w>
     const headlines = listHeadlines(REPEATER, 'rep')
     const h = headlines.find((x) => x.title === 'Water plants')!
     const result = markDoneInSource(REPEATER, h.path)
-    expect(result.ok).toBe(true)
-    if (result.ok === false) return
 
-    expect(result.source).toContain('* DONE Water plants')
-    expect(result.source).toContain('SCHEDULED: <2026-09-05 Fri +1w>')
-    expect(result.source).toContain('#+BEGIN_SRC emacs-lisp')
-    expect(result.source).toContain('#+END_SRC')
-    expect(result.source).not.toContain('#+begin_src')
+    expect(result).toContain('* DONE Water plants')
+    expect(result).toContain('SCHEDULED: <2026-09-05 Fri +1w>')
+    expect(result).toContain('#+BEGIN_SRC emacs-lisp')
+    expect(result).not.toContain('#+begin_src')
+    expect(result).toContain('#+END_SRC')
     // Blank line after SCHEDULED preserved
-    expect(result.source).toMatch(/SCHEDULED: <2026-09-05 Fri \+1w>\n\n#\+BEGIN_SRC/)
+    expect(result).toMatch(/SCHEDULED: <2026-09-05 Fri \+1w>\n\n#\+BEGIN_SRC/)
     // Only the keyword bytes changed
     const expected = REPEATER.replace('* TODO Water plants', '* DONE Water plants')
-    expect(result.source).toBe(expected)
+    expect(result).toBe(expected)
   })
 
   it('zero-edit write is byte-identical', () => {
@@ -295,28 +310,21 @@ SCHEDULED: <2026-09-05 Fri +1w>
     const doneSrc = '* DONE Already\n'
     const headlines = listHeadlines(doneSrc, 'd')
     const result = markDoneInSource(doneSrc, headlines[0]!.path)
-    expect(result).toEqual({ ok: true, source: doneSrc })
+    expect(result).toBe(doneSrc)
   })
 
   it('refuses splice when path is invalid', () => {
-    const result = updateTodoInSource(SAMPLE, [99], 'DONE')
-    expect(result.ok).toBe(false)
-    if (result.ok !== false) return
-    expect(result.reason).toMatch(/No section/)
+    expect(() => updateTodoInSource(SAMPLE, [99], 'DONE')).toThrow(RefuseWrite)
   })
 
   it('cycles TODO → DONE → null via splice without rewriting the rest', () => {
     const base = `#+TITLE: Keep\n\n* TODO Task\nBody keeps blank lines.\n\n#+BEGIN_SRC text\nok\n#+END_SRC\n`
     const h = listHeadlines(base, 'c')[0]!
     const done = updateTodoInSource(base, h.path, 'DONE')
-    expect(done.ok).toBe(true)
-    if (done.ok === false) return
-    expect(done.source).toBe(base.replace('* TODO Task', '* DONE Task'))
-    const cleared = updateTodoInSource(done.source, h.path, null)
-    expect(cleared.ok).toBe(true)
-    if (cleared.ok === false) return
-    expect(cleared.source).toBe(base.replace('* TODO Task', '* Task'))
-    expect(cleared.source).toContain('#+BEGIN_SRC text')
+    expect(done).toBe(base.replace('* TODO Task', '* DONE Task'))
+    const cleared = updateTodoInSource(done, h.path, null)
+    expect(cleared).toBe(base.replace('* TODO Task', '* Task'))
+    expect(cleared).toContain('#+BEGIN_SRC text')
   })
 })
 
