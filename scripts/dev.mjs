@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 /**
- * Stable Vite dev launcher: bind 0.0.0.0:5173 and auto-restart on unexpected exit.
+ * Stable Vite dev launcher: free port, bind 0.0.0.0:5173, auto-restart on unexpected exit.
  */
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { setTimeout as delay } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
@@ -27,27 +26,17 @@ function resolveViteBin() {
   throw new Error("Could not find local Vite binary under node_modules")
 }
 
-async function freePort() {
-  // Best-effort: kill stale listeners on 5173 (Linux).
-  try {
-    await new Promise((resolve) => {
-      const killer = spawn("fuser", ["-k", `${PORT}/tcp`], {
-        stdio: "ignore",
-      })
-      killer.on("error", () => resolve())
-      killer.on("exit", () => resolve())
-    })
-    await delay(200)
-  } catch {
-    // ignore
-  }
+function freePort() {
+  spawnSync(process.execPath, [join(root, "scripts", "free-port.mjs"), String(PORT)], {
+    stdio: "inherit",
+    cwd: root,
+  })
 }
 
 function startVite() {
+  freePort()
   const viteBin = resolveViteBin()
-  const args = viteBin.endsWith(".js")
-    ? [viteBin, ...VITE_ARGS]
-    : [...VITE_ARGS]
+  const args = viteBin.endsWith(".js") ? [viteBin, ...VITE_ARGS] : [...VITE_ARGS]
   const cmd = viteBin.endsWith(".js") ? process.execPath : viteBin
   child = spawn(cmd, args, {
     stdio: "inherit",
@@ -91,5 +80,4 @@ function requestStop(signal) {
 process.on("SIGINT", () => requestStop("SIGINT"))
 process.on("SIGTERM", () => requestStop("SIGTERM"))
 
-await freePort()
 startVite()

@@ -8,7 +8,7 @@
     "postinstall": "node scripts/ensure-sample-orgs.mjs",
     "predev": "node scripts/ensure-sample-orgs.mjs",
     "dev": "node scripts/dev.mjs",
-    "dev:vite": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev:vite": "node scripts/free-port.mjs && vite --host 0.0.0.0 --port 5173 --strictPort",
     "dev:stable": "node scripts/dev.mjs",
     "prepreview": "node scripts/ensure-sample-orgs.mjs",
     "build": "tsc -b && vite build",
@@ -18,8 +18,9 @@
     "lint": "oxlint",
     "ensure-sample-orgs": "node scripts/ensure-sample-orgs.mjs",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "node scripts/free-port.mjs && tauri dev",
+    "tauri:build": "tauri build",
+    "free-port": "node scripts/free-port.mjs"
   },
   "repository": {
     "type": "git",
