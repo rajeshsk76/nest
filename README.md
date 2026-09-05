@@ -74,6 +74,7 @@ Browser mode remains fully supported for UI work without Rust.
 - Elegant markup in the outline (display only): *bold* /italic/ _underline_ +strike+ =verbatim= ~code~, clickable [[url][label]] / [[url]]; raw markers stay in the source panel and on disk
 - Structural editing: fold/unfold subtree (Tab / chevron — visibility only, no disk write); promote/demote stars; move subtree among siblings; insert same-level heading — all structure writes are byte-splice
 - Transparent tables: detect `| col | col |` blocks; edit cells in the outline; Tab between cells; add row — rewrites only the table region (Emacs-aligned pipes)
+- Source blocks: detect `#+BEGIN_SRC lang` … `#+END_SRC`; language badge + monospace editable body; rewrites only the interior (fences stay valid Org); never execute / tangle / Babel
 - Inline title editing (click to edit raw Org; caret-stable) that byte-splices the title when you change it
 - Raw source panel for direct .org text edits
 - Capture appends TODO headlines with CREATED properties drawer (always on) to inbox.org
@@ -94,13 +95,14 @@ Browser mode remains fully supported for UI work without Rust.
 
 Not Emacs Org parity:
 
-- UI focuses on headlines, TODO/DONE, priorities, tags, planning timestamps, simple body text, and Org tables
+- UI focuses on headlines, TODO/DONE, priorities, tags, planning timestamps, simple body text, Org tables, and source blocks
 - Drawers, clocks, properties drawers UI are best-effort via source edits (outline shows emphasis + links for display)
 - Tables: no nested tables, no spreadsheet / TBLFM editing (existing #+TBLFM lines are preserved)
 - Tag filter is AND (item must have every selected tag); no full agenda / refile
 - Title edits splice title bytes; display markup is parse-for-display only (not a structural rewrite)
 - Fold is UI visibility only; promote/demote/move/insert splice stars or section spans (refuse if unsure)
 - Table cell/row edits splice only that table’s byte span (aligned); refuse pipes/newlines in cells
+- Src body edits splice only the interior between fences; refuse bodies that inject `#+END_SRC`; no execution
 - Web: files live in memory + localStorage (sample files under data/ / public/ are seeds only)
 - Desktop: .org files on disk are authoritative; sync/multi-device is out of scope
 - No agenda beyond Today, no sync, auth, or AI
