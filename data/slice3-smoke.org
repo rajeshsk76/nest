@@ -1,0 +1,16 @@
+#+TITLE: Slice 3 smoke — tables
+
+* Groceries
+Keep the shopping list as an Org table. Edit one cell in Nest; Emacs should still align.
+
+| Item  | Qty | Note    |
+|-------+-----+---------|
+| eggs  | 12  | free    |
+| milk  | 1   | oat     |
+| bread | 2   | sourdough |
+
+* Unrelated headline
+This headline must not move when a grocery cell is edited.
+
+** Nested note
+Body stays put.
