@@ -36,6 +36,8 @@ Tauri folder picker, on-disk inbox.org / projects.org
 Raw source panel
 Slice 1 — elegant markup (display only)
 Slice 2 — structural editing (fold view-only; promote/demote/move/insert splice) — shipped
+Slice 3 — transparent tables — shipped
+Slice 4 — superior source code — shipped
 Build all 10 pillars as sequential slices. Ship one slice, test, then the next. Do not start slice N+1 until slice N has tests and an Emacs smoke check.
 Slice 1 — Elegant markup
 Render in the outline (display only; disk stays raw Org):
@@ -55,7 +57,7 @@ Edit a cell in UI; rewrite only that table region
 Tab between cells; add row
 No nested tables. No spreadsheet formulas in this slice
 Done when: editing one cell does not reorder unrelated headlines; Emacs table still aligns.
-Slice 4 — Superior source code
+Slice 4 — Superior source code ✅ shipped
 Detect #+BEGIN_SRC lang … #+END_SRC
 Show language badge + monospace body
 Syntax highlight in UI if cheap; never execute code
@@ -100,5 +102,5 @@ UI in existing src/components/ — calm, whitespace, monospace accents, no neon
 Desktop writes go through src/lib/workspace.ts
 Update README “What works” and PLAN.md after each slice
 If a slice fights the round-trip, shrink the slice. Integrity beats features.
-Slices 1–3 shipped. Start with Slice 4 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
+Slices 1–4 shipped. Start with Slice 5 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
 END PROMPT
