@@ -1,13 +1,15 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   cyclePriority,
   cycleTodo,
   listHeadlines,
   normalizeTag,
+  type DateParts,
   type HeadlineView,
   type Priority,
   type TodoKeyword,
 } from '../lib/org'
+import { PlanningEditor } from './PlanningEditor'
 
 interface OutlineEditorProps {
   fileId: string
@@ -16,6 +18,8 @@ interface OutlineEditorProps {
   onRename: (path: number[], title: string) => void
   onSetPriority: (path: number[], priority: Priority) => void
   onSetTags: (path: number[], tags: string[]) => void
+  onSetScheduled: (path: number[], date: DateParts | null) => void
+  onSetDeadline: (path: number[], date: DateParts | null) => void
 }
 
 function TodoBadge({
@@ -56,6 +60,49 @@ function PriorityBadge({
     >
       {label}
     </button>
+  )
+}
+
+/**
+ * Controlled title field that keeps a local draft while focused.
+ * Parent re-parses Org on each keystroke; without a draft, React would
+ * remount the value from the AST and jump the caret to the end.
+ */
+function HeadlineTitle({
+  title,
+  level,
+  onRename,
+}: {
+  title: string
+  level: number
+  onRename: (title: string) => void
+}) {
+  const [draft, setDraft] = useState(title)
+  const focusedRef = useRef(false)
+
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(title)
+  }, [title])
+
+  return (
+    <input
+      className="headline-title"
+      value={draft}
+      onFocus={() => {
+        focusedRef.current = true
+      }}
+      onBlur={() => {
+        focusedRef.current = false
+        if (draft !== title) onRename(draft)
+        else setDraft(title)
+      }}
+      onChange={(e) => {
+        const next = e.target.value
+        setDraft(next)
+        onRename(next)
+      }}
+      aria-label={`Headline level ${level}`}
+    />
   )
 }
 
@@ -142,12 +189,16 @@ function HeadlineRow({
   onRename,
   onSetPriority,
   onSetTags,
+  onSetScheduled,
+  onSetDeadline,
 }: {
   item: HeadlineView
   onCycleTodo: (path: number[], next: TodoKeyword) => void
   onRename: (path: number[], title: string) => void
   onSetPriority: (path: number[], priority: Priority) => void
   onSetTags: (path: number[], tags: string[]) => void
+  onSetScheduled: (path: number[], date: DateParts | null) => void
+  onSetDeadline: (path: number[], date: DateParts | null) => void
 }) {
   return (
     <div
@@ -164,15 +215,20 @@ function HeadlineRow({
           onClick={() => onSetPriority(item.path, cyclePriority(item.priority))}
         />
       </div>
-      <input
-        className="headline-title"
-        value={item.title}
-        onChange={(e) => onRename(item.path, e.target.value)}
-        aria-label={`Headline level ${item.level}`}
+      <HeadlineTitle
+        title={item.title}
+        level={item.level}
+        onRename={(title) => onRename(item.path, title)}
       />
       <div className="headline-meta">
-        {item.scheduled && <span className="chip">S {item.scheduled}</span>}
-        {item.deadline && <span className="chip danger">D {item.deadline}</span>}
+        <PlanningEditor
+          scheduled={item.scheduledDate}
+          deadline={item.deadlineDate}
+          scheduledDisplay={item.scheduled}
+          deadlineDisplay={item.deadline}
+          onSetScheduled={(date) => onSetScheduled(item.path, date)}
+          onSetDeadline={(date) => onSetDeadline(item.path, date)}
+        />
         <TagEditor
           tags={item.tags}
           onChange={(tags) => onSetTags(item.path, tags)}
@@ -189,11 +245,20 @@ export function OutlineEditor({
   onRename,
   onSetPriority,
   onSetTags,
+  onSetScheduled,
+  onSetDeadline,
 }: OutlineEditorProps) {
   const headlines = listHeadlines(source, fileId)
 
   if (headlines.length === 0) {
-    return <p className="empty">No headlines yet. Capture something, or edit the source.</p>
+    return (
+      <div className="empty-state">
+        <p className="empty-title">This file is quiet.</p>
+        <p className="empty-body">
+          Capture a TODO above — Nest writes it here as plain Org.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -206,6 +271,8 @@ export function OutlineEditor({
           onRename={onRename}
           onSetPriority={onSetPriority}
           onSetTags={onSetTags}
+          onSetScheduled={onSetScheduled}
+          onSetDeadline={onSetDeadline}
         />
       ))}
     </div>
