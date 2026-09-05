@@ -1,0 +1,25 @@
+#+TITLE: Projects
+
+* Personal
+** TODO [#C] Evening walk :health:home:
+SCHEDULED: <2026-09-05 Sat>
+Twenty minutes, no phone.
+
+** TODO Plan Sunday cooking :home:errands:
+DEADLINE: <2026-09-06 Sun>
+* Nest
+** TODO [#A] Ship local-first outline editor :nest:work:
+SCHEDULED: <2026-09-05 Sat>
+Headlines, TODO/DONE, priorities, tags, and stringify round-trip.
+
+** TODO [#B] Polish Today view :nest:ui:
+DEADLINE: <2026-09-07 Mon>
+Show scheduled and deadline items; filter by priority/tag.
+
+** TODO Write friendly README :nest:docs:
+Explain week-1 scope and limitations.
+
+** DONE Choose uniorg for parse/stringify :nest:
+CLOSED: [2026-09-03 Wed]
+
+* Slice 2 smoke peer

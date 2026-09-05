@@ -34,6 +34,8 @@ Capture → inbox.org with CREATED drawer
 Today view (SCHEDULED / DEADLINE + open TODOs), Mark DONE
 Tauri folder picker, on-disk inbox.org / projects.org
 Raw source panel
+Slice 1 — elegant markup (display only)
+Slice 2 — structural editing (fold view-only; promote/demote/move/insert splice) — shipped
 Build all 10 pillars as sequential slices. Ship one slice, test, then the next. Do not start slice N+1 until slice N has tests and an Emacs smoke check.
 Slice 1 — Elegant markup
 Render in the outline (display only; disk stays raw Org):
@@ -41,7 +43,7 @@ Render in the outline (display only; disk stays raw Org):
 Links [[url][label]] and [[url]] — clickable in UI, bytes unchanged
 Keep raw markers in the source panel
 Done when: a fixture with mixed emphasis + a link renders in the outline and stringify leaves the file byte-identical if the user did not edit those spans.
-Slice 2 — Structural editing
+Slice 2 — Structural editing ✅ shipped
 Tab / click: fold and unfold a headline subtree (visibility only — no file write)
 Promote / demote: change star count on the current headline and its children
 Move subtree up / down among siblings
@@ -98,5 +100,5 @@ UI in existing src/components/ — calm, whitespace, monospace accents, no neon
 Desktop writes go through src/lib/workspace.ts
 Update README “What works” and PLAN.md after each slice
 If a slice fights the round-trip, shrink the slice. Integrity beats features.
-Start with Slice 1. After it passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
+Slices 1–2 shipped. Start with Slice 3 next. After a slice passes tests, stop and show: files changed, how to verify in the app, and the Emacs check.
 END PROMPT

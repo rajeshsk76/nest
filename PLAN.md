@@ -23,6 +23,7 @@
 | **v0.2.1** | Priorities `[#A/B/C]`, tags `:tag:`, Today filters + sort, capture parses `#A` / `:tag:` |
 | **ops** | Auto-seed sample orgs, free port **5173** before `tauri:dev` / Vite |
 | **Slice 1** | Elegant markup in outline (emphasis + links, display only; disk stays raw Org) |
+| **Slice 2** | Structural editing: fold (view only); promote/demote/move/insert via byte-splice |
 
 **Repo:** https://github.com/rajeshsk76/nest
 
@@ -94,6 +95,7 @@ V2.2 habit polish (caret / CREATED / Today chips / CI / onboarding) ships before
 | 2026-09-05 | Tauri + disk folder as V2 truth |
 | 2026-09-05 | Auto-free 5173 baked into `tauri:dev` |
 | 2026-09-05 | Slice 1 elegant markup: display parse only; zero-edit / no structural rewrite of unedited spans |
+| 2026-09-05 | Slice 2 structural editing: fold = visibility only; promote/demote/move/insert byte-splice |
 
 ---
 
