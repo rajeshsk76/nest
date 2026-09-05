@@ -1,5 +1,7 @@
 # Nest
 
+[![CI](https://github.com/rajeshsk76/nest/actions/workflows/ci.yml/badge.svg)](https://github.com/rajeshsk76/nest/actions/workflows/ci.yml)
+
 **Org mode for people who won't install Emacs.**
 
 Nest is a local-first starter for plain `.org` files. Week 1 shipped a calm outline UI with a working **parse -> edit -> stringify** loop. Week 2 adds an optional Tauri desktop shell so Capture and Today read and write real `.org` files on disk.
@@ -63,15 +65,15 @@ Browser mode remains fully supported for UI work without Rust.
 
 ## What works
 
-- App shell with name + tagline
+- App shell with name + tagline; calm empty-state onboarding when no headlines
 - Outline editor for headlines with TODO / DONE cycling
 - Org priorities `[#A]` / `[#B]` / `[#C]` (cycle in outline + Today; rewrite .org)
 - Org tags `:tag:` / `:tag1:tag2:` (chips add/remove; rewrite .org)
-- Today filters by priority and/or tag (sticky via localStorage); sort A → B → C → none
+- Today sticky priority badges + tag chips for filtering; sort A → B → C → none
 - Capture parses `#A` / `[#B]` and trailing `:tag:` from the title text
-- Inline title editing that writes back through uniorg stringify
+- Inline title editing (caret-stable) that writes back through uniorg stringify
 - Raw source panel for direct .org text edits
-- Capture appends TODO headlines (optional CREATED timestamp) to inbox.org
+- Capture appends TODO headlines with CREATED properties drawer (always on) to inbox.org
 - Today view: open TODOs plus SCHEDULED / DEADLINE for today; Mark DONE writes back
 - Seed fixtures in src/fixtures; web first load prefers /sample-inbox.org and /projects.org when localStorage is empty
 - Browser localStorage persistence (Reset fixtures restores embedded seeds)
@@ -82,7 +84,7 @@ Browser mode remains fully supported for UI work without Rust.
 
 - Vite + TypeScript + React
 - uniorg-parse / uniorg-stringify for Org AST round-trip
-- Vitest for a small parse/stringify test suite
+- Vitest for parse/stringify + Org compat round-trip (CI badge)
 - Tauri 2 (optional desktop) with dialog, fs, and store plugins
 
 ## Limitations
