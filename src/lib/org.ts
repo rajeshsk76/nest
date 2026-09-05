@@ -16,3 +16,10 @@ export {
   updateTableCellInSource,
   addTableRowInSource,
 } from "./org-tables"
+export type { OrgSrcBlockView } from "./org-src"
+export {
+  listSrcBlocks,
+  normalizeSrcBody,
+  assertSafeSrcBody,
+  updateSrcBodyInSource,
+} from "./org-src"
