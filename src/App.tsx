@@ -23,6 +23,7 @@ import {
   updateDeadlineInSource,
   updatePriorityInSource,
   updateScheduledInSource,
+  updateSrcBodyInSource,
   updateTableCellInSource,
   updateTagsInSource,
   updateTitleInSource,
@@ -240,6 +241,10 @@ export default function App() {
     applyEdit(activeFile, (src) => addTableRowInSource(src, tableIndex))
   }
 
+  function handleUpdateSrcBody(blockIndex: number, body: string) {
+    applyEdit(activeFile, (src) => updateSrcBodyInSource(src, blockIndex, body))
+  }
+
   function handleMarkDone(fileId: string, path: number[]) {
     applyEdit(fileId as NestFileId, (src) => markDoneInSource(src, path))
   }
@@ -399,6 +404,7 @@ export default function App() {
                 onInsertHeading={handleInsertHeading}
                 onUpdateTableCell={handleUpdateTableCell}
                 onAddTableRow={handleAddTableRow}
+                onUpdateSrcBody={handleUpdateSrcBody}
               />
             </section>
             {showSource && (
