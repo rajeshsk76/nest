@@ -8,7 +8,10 @@ import type { NestFileId } from './fixtures'
 import {
   captureTodo,
   markDoneInSource,
+  type Priority,
   type TodoKeyword,
+  updatePriorityInSource,
+  updateTagsInSource,
   updateTitleInSource,
   updateTodoInSource,
 } from './lib/org'
@@ -137,10 +140,27 @@ export default function App() {
     patchFile(activeFile, updateTitleInSource(activeSource, path, title))
   }
 
+  function handleSetPriority(path: number[], priority: Priority) {
+    patchFile(activeFile, updatePriorityInSource(activeSource, path, priority))
+  }
+
+  function handleSetTags(path: number[], tags: string[]) {
+    patchFile(activeFile, updateTagsInSource(activeSource, path, tags))
+  }
+
   function handleMarkDone(fileId: string, path: number[]) {
     const id = fileId as NestFileId
     setFiles((prev) => {
       const next = markDoneInSource(prev[id], path)
+      void persistFile(id, next)
+      return { ...prev, [id]: next }
+    })
+  }
+
+  function handleTodayPriority(fileId: string, path: number[], priority: Priority) {
+    const id = fileId as NestFileId
+    setFiles((prev) => {
+      const next = updatePriorityInSource(prev[id], path, priority)
       void persistFile(id, next)
       return { ...prev, [id]: next }
     })
@@ -251,15 +271,19 @@ export default function App() {
             Opening Nest folder…
           </p>
         ) : view === 'today' ? (
-          <TodayView files={fileList} onMarkDone={handleMarkDone} />
+          <TodayView
+            files={fileList}
+            onMarkDone={handleMarkDone}
+            onSetPriority={handleTodayPriority}
+          />
         ) : (
           <div className={showSource ? 'editor-layout split' : 'editor-layout'}>
             <section className="outline-panel">
               <header className="panel-header compact">
                 <h2>{activeMeta.name}</h2>
                 <p className="muted small">
-                  Click the keyword to cycle TODO → DONE → clear. Titles edit
-                  inline and stringify back to Org.
+                  Cycle TODO / priority badges. Tags: click a chip to remove, +tag
+                  to add. Titles edit inline and stringify back to Org.
                 </p>
               </header>
               <OutlineEditor
@@ -267,6 +291,8 @@ export default function App() {
                 source={activeSource}
                 onCycleTodo={handleCycleTodo}
                 onRename={handleRename}
+                onSetPriority={handleSetPriority}
+                onSetTags={handleSetTags}
               />
             </section>
             {showSource && (
@@ -286,7 +312,7 @@ export default function App() {
             ? 'Local-first · plain .org files on disk'
             : 'Local-first · plain .org files in memory + localStorage'}
         </span>
-        <span>Week-2 desktop shell · no sync, auth, or AI</span>
+        <span>V2.1 · tags &amp; priorities · no sync, auth, or AI</span>
       </footer>
     </div>
   )
