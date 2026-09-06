@@ -21,7 +21,7 @@ On install / before dev / preview, Nest auto-creates sample org files under data
 
 ```bash
 npm run build
-npm test
+npm run test:all
 npm run preview
 ```
 
