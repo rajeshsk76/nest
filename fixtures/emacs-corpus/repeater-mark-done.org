@@ -1,0 +1,8 @@
+* TODO Water plants
+SCHEDULED: <2026-09-05 Fri +1w>
+
+#+BEGIN_SRC emacs-lisp
+(message "fragile")
+#+END_SRC
+
+#+MACRO: greeting Hello $1
