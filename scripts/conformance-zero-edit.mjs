@@ -24,6 +24,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
+  RefuseWrite,
+  assertOnlySpansChanged,
   changedRegions,
   listHeadlines,
   listTables,
@@ -33,6 +35,7 @@ import {
   updateTableCellInSource,
   updateTodoInSource,
 } from '../src/lib/org.ts'
+import { listCheckboxes, toggleCheckboxInSource } from '../src/lib/org-checkboxes.ts'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const argv = process.argv.slice(2)
@@ -181,6 +184,75 @@ for (const file of collectOrgFiles()) {
       }
     } catch (err) {
       record(a2File, 'table-numeric-align', false, `refused: ${err.message}`)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Checkbox group — toggle + nested propagation + cookie recompute, exercised
+// against real unrelated syntax (required gate)
+// ---------------------------------------------------------------------------
+{
+  const checkboxFile = path.join(root, 'data/track-checkbox-fidelity.org')
+  if (!fs.existsSync(checkboxFile)) {
+    record(checkboxFile, 'checkbox-toggle', false, 'missing data/track-checkbox-fidelity.org fixture')
+  } else {
+    const src = fs.readFileSync(checkboxFile, 'utf8')
+    try {
+      const items = listCheckboxes(src)
+      const twoIndex = items.findIndex((i) => i.text === 'Two')
+      if (twoIndex < 0) {
+        record(checkboxFile, 'checkbox-toggle', false, 'fixture missing expected "Two" checkbox item')
+      } else {
+        const result = toggleCheckboxInSource(src, twoIndex)
+        const after = result.next
+        assertOnlySpansChanged(src, after, result.edits) // throws if a byte moved outside declared spans
+
+        const expectedInside = [
+          '* Project [1/1]',
+          '- [X] Parent [1/1]',
+          '  - [X] Child [2/2]',
+          '    - [X] One',
+          '    - [X] Two',
+        ]
+        const hasAllInside = expectedInside.every((s) => after.includes(s))
+
+        const expectedUntouched = [
+          ':PROPERTIES:',
+          ':CLIENT: café',
+          ':END:',
+          '#+BEGIN_SRC python :tangle build.py',
+          'print("hello")',
+          '#+END_SRC',
+          '#+NAME: checklist',
+          '#+CAPTION: A checklist with unrelated syntax around it',
+        ]
+        const hasAllUntouched = expectedUntouched.every((s) => after.includes(s) && src.includes(s))
+
+        const ok = hasAllInside && hasAllUntouched
+        record(
+          checkboxFile,
+          'checkbox-toggle',
+          ok,
+          ok ? '' : 'toggle produced unexpected output or disturbed unrelated syntax',
+        )
+      }
+    } catch (err) {
+      record(checkboxFile, 'checkbox-toggle', false, `refused: ${err.message}`)
+    }
+
+    // Toggling a checkbox whose state is derived from its children must refuse.
+    try {
+      const items = listCheckboxes(src)
+      const parentIndex = items.findIndex((i) => i.hasChildren)
+      if (parentIndex < 0) {
+        record(checkboxFile, 'checkbox-parent-refuses', false, 'fixture has no parent checkbox to test')
+      } else {
+        toggleCheckboxInSource(src, parentIndex)
+        record(checkboxFile, 'checkbox-parent-refuses', false, 'toggling a derived checkbox did not refuse')
+      }
+    } catch (err) {
+      record(checkboxFile, 'checkbox-parent-refuses', err instanceof RefuseWrite, `unexpected error: ${err.message}`)
     }
   }
 }

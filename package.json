@@ -26,7 +26,8 @@
     "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs",
     "test:emacs-oracle": "node scripts/emacs-repeater-oracle.mjs",
     "test:emacs-table-oracle": "node scripts/emacs-table-oracle.mjs",
-    "test:oracles": "vitest run --no-file-parallelism src/lib/org-repeater-oracle.test.ts src/lib/org-table-oracle.test.ts",
+    "test:emacs-checkbox-oracle": "node scripts/emacs-checkbox-oracle.mjs",
+    "test:oracles": "vitest run --no-file-parallelism src/lib/org-repeater-oracle.test.ts src/lib/org-table-oracle.test.ts src/lib/org-checkbox-oracle.test.ts",
     "test:all": "npm run test && npm run test:oracles"
   },
   "repository": {

@@ -1,0 +1,15 @@
+* Project [0/1]
+:PROPERTIES:
+:CLIENT: café
+:END:
+
+#+BEGIN_SRC python :tangle build.py
+print("hello")
+#+END_SRC
+
+#+NAME: checklist
+#+CAPTION: A checklist with unrelated syntax around it
+- [ ] Parent [0/1]
+  - [ ] Child [1/2]
+    - [X] One
+    - [ ] Two
