@@ -23,7 +23,8 @@
     "free-port": "node scripts/free-port.mjs",
     "conformance:zero-edit": "vite-node scripts/conformance-zero-edit.mjs",
     "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs --dry-run",
-    "test:emacs-oracle": "node scripts/emacs-repeater-oracle.mjs"
+    "test:emacs-oracle": "node scripts/emacs-repeater-oracle.mjs",
+    "test:emacs-table-oracle": "node scripts/emacs-table-oracle.mjs"
   },
   "repository": {
     "type": "git",

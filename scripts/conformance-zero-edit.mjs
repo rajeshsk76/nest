@@ -7,10 +7,12 @@
  * and scored 100% without importing a single line of Nest. Never do that again:
  * if this file does not import from ../src/lib/org.ts, it is not a gate.
  *
- * Three checks per corpus file:
+ * Checks per corpus file:
  *   1. zero-edit   -- a no-op mutation must return the identical string
  *   2. mark-DONE   -- plain: one changed line; repeater: ≤3 hunks + LAST_REPEAT
  *   3. reschedule  -- every stamp keeps its time of day, repeater and warning
+ * Plus Track A.2 gate (required):
+ *   4. table-numeric -- cell edit right-aligns numeric columns (Emacs `|  99 |`)
  *
  * Usage:
  *   npm run conformance:zero-edit
@@ -24,9 +26,11 @@ import { fileURLToPath } from 'node:url'
 import {
   changedRegions,
   listHeadlines,
+  listTables,
   markDoneInSource,
   stampHasRepeater,
   updateScheduledInSource,
+  updateTableCellInSource,
   updateTodoInSource,
 } from '../src/lib/org.ts'
 
@@ -140,6 +144,43 @@ for (const file of collectOrgFiles()) {
       }
     } catch (err) {
       record(file, `reschedule [${h.path}]`, false, `refused: ${err.message}`)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Track A.2 — table numeric right-alignment after a one-cell edit (hard gate)
+// ---------------------------------------------------------------------------
+{
+  const a2File = path.join(root, 'data/track-a2-numeric-table.org')
+  if (!fs.existsSync(a2File)) {
+    record(a2File, 'table-numeric-align', false, 'missing data/track-a2-numeric-table.org fixture')
+  } else {
+    const src = fs.readFileSync(a2File, 'utf8')
+    try {
+      const tables = listTables(src)
+      if (tables.length < 1) {
+        record(a2File, 'table-numeric-align', false, 'fixture has no org table')
+      } else {
+        // eggs row (index 2), Qty col (1) → 99; must Emacs-right-align
+        const edited = updateTableCellInSource(src, 0, 2, 1, '99')
+        const hasRight99 = edited.includes('|  99 |')
+        const hasRight1 = edited.includes('|   1 |')
+        const hasWrongLeft99 = edited.includes('| 99  |')
+        const outsideOk =
+          edited.includes('Keep this paragraph.') && edited.includes('* Other')
+        const ok = hasRight99 && hasRight1 && !hasWrongLeft99 && outsideOk
+        record(
+          a2File,
+          'table-numeric-align',
+          ok,
+          ok
+            ? ''
+            : `expected |  99 | and |   1 | after cell edit; got table region mismatch (left-pad=${hasWrongLeft99})`,
+        )
+      }
+    } catch (err) {
+      record(a2File, 'table-numeric-align', false, `refused: ${err.message}`)
     }
   }
 }
