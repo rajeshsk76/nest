@@ -3,14 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   captureTodo,
   collectTodayAgenda,
-  demoteSubtreeInSource,
   filterTodayItems,
-  insertHeadingInSource,
   listHeadlines,
   markDoneInSource,
   advanceRepeaterTimestamp,
-  moveSubtreeInSource,
-  promoteSubtreeInSource,
   RefuseWrite,
   parseCaptureTitle,
   parseOrg,
@@ -23,15 +19,6 @@ import {
   updateTagsInSource,
   updateTodoInSource,
   zeroEditWrite,
-  parseInlineMarkup,
-  updateTitleInSource,
-  listTables,
-  serializeOrgTable,
-  updateTableCellInSource,
-  addTableRowInSource,
-  listSrcBlocks,
-  updateSrcBodyInSource,
-  normalizeSrcBody,
 } from './org'
 
 const SAMPLE = `#+TITLE: Test

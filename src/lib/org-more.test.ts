@@ -1,27 +1,12 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
-  captureTodo,
-  collectTodayAgenda,
   demoteSubtreeInSource,
-  filterTodayItems,
   insertHeadingInSource,
   listHeadlines,
-  markDoneInSource,
-  advanceRepeaterTimestamp,
   moveSubtreeInSource,
   promoteSubtreeInSource,
   RefuseWrite,
-  parseCaptureTitle,
-  parseOrg,
   changedRegions,
-  roundTrip,
-  stringifyOrg,
-  updateDeadlineInSource,
-  updatePriorityInSource,
-  updateScheduledInSource,
-  updateTagsInSource,
-  updateTodoInSource,
   zeroEditWrite,
   parseInlineMarkup,
   updateTitleInSource,
@@ -279,11 +264,13 @@ Unrelated body.
       ],
       '',
     )
+    // Emacs right-aligns a column whose non-header cells all parse as numbers
+    // (Track A.2). These expectations were written before that landed.
     expect(out).toBe(
       `| Item | Qty |
 |------+-----|
-| eggs | 12  |
-| milk | 1   |
+| eggs |  12 |
+| milk |   1 |
 `,
     )
   })
@@ -291,7 +278,7 @@ Unrelated body.
   it('updates one cell without touching outside bytes or reordering headlines', () => {
     const before = SAMPLE
     const next = updateTableCellInSource(before, 0, 2, 1, '24')
-    expect(next).toContain('| eggs | 24')
+    expect(next).toContain('| eggs |  24 |') // numeric column is right-aligned
     expect(next).toContain('Keep this paragraph.')
     expect(next).toContain('* Other')
     expect(next).toContain('Unrelated body.')

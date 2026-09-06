@@ -4,7 +4,6 @@ import {
   listHeadlines,
   markDoneInSource,
   advanceRepeaterTimestamp,
-  zeroEditWrite,
 } from './org'
 
 const REPEATER = `* TODO Water plants

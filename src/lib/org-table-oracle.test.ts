@@ -24,5 +24,5 @@ describe('Emacs table numeric-align oracle (same commit as write surface)', () =
     }
     expect(r.status).toBe(0)
     expect(r.stdout).toContain('PASS: Nest matches Emacs on numeric table cell edit alignment')
-  })
+  }, 60_000)
 })

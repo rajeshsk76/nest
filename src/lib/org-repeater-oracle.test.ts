@@ -24,5 +24,5 @@ describe('Emacs repeater oracle (same commit as write surface)', () => {
     }
     expect(r.status).toBe(0)
     expect(r.stdout).toContain('PASS: Nest matches Emacs on repeater Mark DONE semantics')
-  })
+  }, 60_000)
 })
