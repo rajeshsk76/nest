@@ -35,6 +35,7 @@ import {
   updateTodoInSource,
 } from './lib/org'
 import { isDesktop } from './lib/platform'
+import { recordUndo, takeUndo, type UndoState } from './lib/undo'
 import {
   fileMeta,
   hasStoredFiles,
@@ -56,6 +57,15 @@ import {
 
 type View = 'editor' | 'today'
 
+type UndoEntry = {
+  state: UndoState
+  id: NestFileId
+  after: string
+  folder: string | null
+  declared: Edit[] | null
+  maxRegions: number
+}
+
 const desktop = isDesktop()
 
 export default function App() {
@@ -70,6 +80,9 @@ export default function App() {
   const [createdDefault, setCreatedDefault] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const skipWebPersist = useRef(desktop)
+  const [undo, setUndo] = useState<UndoEntry | null>(null)
+  const undoRef = useRef<UndoEntry | null>(null)
+  const restoringUndo = useRef<UndoEntry | null>(null)
 
   useEffect(() => {
     if (!desktop) {
@@ -163,10 +176,16 @@ export default function App() {
         throw err
       }
       if (after === before) return
+      // Undo revalidates the original edit in its original direction, including
+      // its exact declared spans. Neither guard nor region limit is relaxed.
+      const restoring = restoringUndo.current
+      if (restoring) declared = restoring.declared
+      const guardBefore = restoring ? after : before
+      const guardAfter = restoring ? before : after
       if (declared) {
         // Strongest check: nothing moved outside the spans the mutator declared.
         try {
-          assertOnlySpansChanged(before, after, declared)
+          assertOnlySpansChanged(guardBefore, guardAfter, declared)
         } catch (err) {
           if (err instanceof RefuseWrite) {
             setStatus(`Refused: ${err.message} in ${id}.org`)
@@ -177,19 +196,48 @@ export default function App() {
       } else {
         // Mutators that still return a bare string keep the region count.
         // Migrating one to SpliceResult always tightens its guard.
-        const regions = changedRegions(before, after)
+        const regions = changedRegions(guardBefore, guardAfter)
         const maxRegions = opts.maxRegions ?? 1
         if (regions < 1 || regions > maxRegions) {
           setStatus(`Refused: that edit would change ${regions} regions of ${id}.org`)
           return
         }
       }
+      if (!restoring) {
+        const entry: UndoEntry = {
+          state: recordUndo(undoRef.current?.state ?? { previous: null }, before),
+          id, after, folder: folderPath, declared, maxRegions: opts.maxRegions ?? 1,
+        }
+        undoRef.current = entry
+        setUndo(entry)
+      }
       filesRef.current = { ...filesRef.current, [id]: after }
       setFiles((prev) => ({ ...prev, [id]: after }))
       void persistFile(id, after)
     },
-    [persistFile],
+    [persistFile, folderPath],
   )
+
+  // A replacement/reload must not leave an undo action for a different source.
+  const canUndo = undo !== null && undo.state.previous !== null &&
+    undo.folder === folderPath && files[undo.id] === undo.after
+
+  function handleUndo() {
+    const entry = undoRef.current
+    if (!entry || entry.folder !== folderPath || filesRef.current[entry.id] !== entry.after) return
+    const taken = takeUndo(entry.state)
+    if (!taken) return
+    restoringUndo.current = entry
+    try {
+      applyEdit(entry.id, () => taken.restore, { maxRegions: entry.maxRegions })
+      if (filesRef.current[entry.id] === taken.restore) {
+        undoRef.current = null
+        setUndo(null)
+      }
+    } finally {
+      restoringUndo.current = null
+    }
+  }
 
   const activeSource = files[activeFile]
   const activeMeta = fileMeta(activeFile)
@@ -294,6 +342,8 @@ export default function App() {
     } else {
       setFiles(resetFiles())
     }
+    undoRef.current = null
+    setUndo(null)
     setActiveFile('inbox')
     setView('editor')
   }
@@ -303,6 +353,8 @@ export default function App() {
     const picked = await pickWorkspaceFolder()
     if (!picked) return
     const nextFiles = await readWorkspaceFiles(picked)
+    undoRef.current = null
+    setUndo(null)
     setFolderPath(picked)
     setFiles(nextFiles)
     setCreatedDefault(false)
@@ -351,7 +403,17 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" onKeyDown={(event) => {
+      if (event.defaultPrevented || event.nativeEvent.isComposing || event.repeat ||
+          !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey ||
+          event.key.toLowerCase() !== 'z') return
+      const target = event.target
+      if ((target instanceof HTMLElement && target.isContentEditable) ||
+          (target instanceof Element && target.closest('input, textarea, select, [contenteditable], [role="textbox"]'))) return
+      if (!canUndo) return
+      event.preventDefault()
+      handleUndo()
+    }}>
       <header className="shell-header">
         <div className="brand">
           <div className="logo" aria-hidden>
@@ -363,6 +425,16 @@ export default function App() {
           </div>
         </div>
         <div className="shell-actions">
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={!canUndo}
+            title={canUndo ? `Undo last edit to ${undo.id}.org (Ctrl+Z / Cmd+Z)` : 'No edit to undo'}
+            aria-keyshortcuts="Control+Z Meta+Z"
+            onClick={handleUndo}
+          >
+            Undo
+          </button>
           <button type="button" className="btn ghost" onClick={() => void handleReset()}>
             Reset fixtures
           </button>
