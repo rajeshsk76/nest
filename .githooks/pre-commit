@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Nest pre-commit: fail closed on zero-edit conformance.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node is not on PATH; cannot run conformance:zero-edit" >&2
+  exit 1
+fi
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "pre-commit: npm is not on PATH; cannot run conformance:zero-edit" >&2
+  exit 1
+fi
+
+echo "pre-commit: running npm run conformance:zero-edit ..."
+npm run conformance:zero-edit
