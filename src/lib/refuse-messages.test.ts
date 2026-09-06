@@ -18,4 +18,18 @@ describe('plainRefuseMessage', () => {
   it('maps region refuse', () => {
     expect(plainRegionsRefuseMessage('inbox', 4)).toMatch(/4 separate parts of inbox\.org/)
   })
+
+  it('maps checkbox refusals calmly', () => {
+    expect(
+      plainRefuseMessage(
+        new RefuseWrite('cannot toggle a checkbox whose state is derived from its children'),
+      ),
+    ).toMatch(/follows its own items automatically/)
+    expect(plainRefuseMessage(new RefuseWrite('cannot toggle a checkbox in a mixed state'))).toMatch(
+      /mixed state/,
+    )
+    expect(plainRefuseMessage(new RefuseWrite('checkbox index out of range'))).toMatch(
+      /couldn't find that checkbox/,
+    )
+  })
 })

@@ -3,6 +3,7 @@ import {
   cyclePriority,
   cycleTodo,
   drawersExpandedByDefault,
+  listCheckboxes,
   listDrawers,
   listHeadlines,
   listSrcBlocks,
@@ -10,6 +11,7 @@ import {
   normalizeTag,
   type DateParts,
   type HeadlineView,
+  type OrgChecklistItemView,
   type OrgDrawerView,
   type OrgSrcBlockView,
   type OrgTableView,
@@ -38,6 +40,7 @@ interface OutlineEditorProps {
   onUpdateTableCell: (tableIndex: number, row: number, col: number, value: string) => void
   onAddTableRow: (tableIndex: number) => void
   onUpdateSrcBody: (blockIndex: number, body: string) => void
+  onToggleCheckbox?: (index: number) => void
 }
 
 function TodoBadge({
@@ -291,6 +294,14 @@ function isDrawerHiddenByFold(
   return isBodyHiddenByFold(drawer.headlinePath, folded, headlines)
 }
 
+function isChecklistItemHiddenByFold(
+  item: OrgChecklistItemView,
+  folded: Set<string>,
+  headlines: HeadlineView[],
+): boolean {
+  return isBodyHiddenByFold(item.headlinePath, folded, headlines)
+}
+
 /**
  * :PROPERTIES: and :LOGBOOK: drawers are machine bookkeeping; collapsed to a
  * single clickable line by default (see drawersExpandedByDefault), full raw
@@ -325,6 +336,54 @@ function DrawerBlock({
   )
 }
 
+const CHECKBOX_GLYPH: Record<OrgChecklistItemView['checkbox'], string> = {
+  on: '☒',
+  off: '☐',
+  trans: '▨',
+}
+
+/**
+ * Checkbox list under a headline (or at file root). Every item is a real
+ * splice through toggleCheckboxInSource — a parent whose box is derived
+ * from its children is still clickable; the mutator refuses and the status
+ * bar explains why, rather than the UI guessing which items are "allowed".
+ */
+function ChecklistBlock({
+  items,
+  onToggle,
+}: {
+  items: OrgChecklistItemView[]
+  onToggle: (index: number) => void
+}) {
+  if (items.length === 0) return null
+  return (
+    <ul className="checklist">
+      {items.map((item) => (
+        <li key={item.index} className="checklist-item">
+          <button
+            type="button"
+            className={`checklist-box checklist-${item.checkbox}`}
+            onClick={() => onToggle(item.index)}
+            aria-pressed={item.checkbox === 'on'}
+            aria-label={item.checkbox === 'on' ? `Uncheck ${item.text}` : `Check ${item.text}`}
+            title={
+              item.hasChildren
+                ? 'This box follows its own items automatically'
+                : item.checkbox === 'on'
+                  ? 'Mark as not done'
+                  : 'Mark as done'
+            }
+          >
+            {CHECKBOX_GLYPH[item.checkbox]}
+          </button>
+          <span className="checklist-text">{item.text}</span>
+          {item.cookie && <span className="checklist-cookie">{item.cookie}</span>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function isHiddenByFold(item: HeadlineView, folded: Set<string>, headlines: HeadlineView[]): boolean {
   for (const other of headlines) {
     if (!folded.has(other.id)) continue
@@ -341,6 +400,7 @@ function HeadlineRow({
   tables,
   srcBlocks,
   drawers,
+  checklistItems,
   isDrawerExpanded,
   onToggleDrawer,
   onToggleFold,
@@ -357,6 +417,7 @@ function HeadlineRow({
   onUpdateTableCell,
   onAddTableRow,
   onUpdateSrcBody,
+  onToggleCheckbox,
 }: {
   item: HeadlineView
   rawMarkup: boolean
@@ -365,6 +426,7 @@ function HeadlineRow({
   tables: OrgTableView[]
   srcBlocks: OrgSrcBlockView[]
   drawers: Array<{ drawer: OrgDrawerView; key: string }>
+  checklistItems: OrgChecklistItemView[]
   isDrawerExpanded: (key: string) => boolean
   onToggleDrawer: (key: string) => void
   onToggleFold: () => void
@@ -381,6 +443,7 @@ function HeadlineRow({
   onUpdateTableCell: (tableIndex: number, row: number, col: number, value: string) => void
   onAddTableRow: (tableIndex: number) => void
   onUpdateSrcBody: (blockIndex: number, body: string) => void
+  onToggleCheckbox: (index: number) => void
 }) {
   function onRowKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement
@@ -554,6 +617,11 @@ function HeadlineRow({
               </div>
             )
           })}
+      {!folded && checklistItems.length > 0 && (
+        <div style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}>
+          <ChecklistBlock items={checklistItems} onToggle={onToggleCheckbox} />
+        </div>
+      )}
     </>
   )
 }
@@ -575,11 +643,13 @@ export function OutlineEditor({
   onUpdateTableCell,
   onAddTableRow,
   onUpdateSrcBody,
+  onToggleCheckbox = () => {},
 }: OutlineEditorProps) {
   const headlines = useMemo(() => listHeadlines(source, fileId), [source, fileId])
   const tables = useMemo(() => listTables(source), [source])
   const srcBlocks = useMemo(() => listSrcBlocks(source), [source])
   const drawers = useMemo(() => listDrawers(source), [source])
+  const checklists = useMemo(() => listCheckboxes(source), [source])
   const drawersExpandByDefault = useMemo(() => drawersExpandedByDefault(source), [source])
   // Fold is visibility-only — never written to disk.
   const [folded, setFolded] = useState<Set<string>>(() => new Set())
@@ -634,6 +704,9 @@ export function OutlineEditor({
   const rootDrawers = drawers
     .filter((d) => d.headlinePath === null && !isDrawerHiddenByFold(d, folded, headlines))
     .map((drawer) => ({ drawer, key: drawerKey(drawer.index) }))
+  const rootChecklist = checklists.filter(
+    (c) => c.headlinePath === null && !isChecklistItemHiddenByFold(c, folded, headlines),
+  )
 
   return (
     <div className="outline">
@@ -669,6 +742,7 @@ export function OutlineEditor({
             />
           )
         })}
+      <ChecklistBlock items={rootChecklist} onToggle={onToggleCheckbox} />
       {visible.map((item) => (
         <HeadlineRow
           key={item.id}
@@ -693,6 +767,11 @@ export function OutlineEditor({
                 !isDrawerHiddenByFold(d, folded, headlines),
             )
             .map((drawer) => ({ drawer, key: drawerKey(drawer.index) }))}
+          checklistItems={checklists.filter(
+            (c) =>
+              sameHeadlinePath(c.headlinePath, item.path) &&
+              !isChecklistItemHiddenByFold(c, folded, headlines),
+          )}
           isDrawerExpanded={isDrawerExpanded}
           onToggleDrawer={toggleDrawer}
           onToggleFold={() => toggleFold(item.id)}
@@ -709,6 +788,7 @@ export function OutlineEditor({
           onUpdateTableCell={onUpdateTableCell}
           onAddTableRow={onAddTableRow}
           onUpdateSrcBody={onUpdateSrcBody}
+          onToggleCheckbox={onToggleCheckbox}
         />
       ))}
     </div>

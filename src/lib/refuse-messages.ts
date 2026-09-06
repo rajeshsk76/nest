@@ -55,6 +55,15 @@ export function plainRefuseMessage(err: RefuseWrite): string {
   if (/overlapping sibling|non-section bytes between siblings/i.test(m)) {
     return "Nest couldn't move that subtree safely, so it left the file alone."
   }
+  if (/cannot toggle a checkbox whose state is derived from its children/i.test(m)) {
+    return "That box follows its own items automatically, so Nest left it alone."
+  }
+  if (/cannot toggle a checkbox in a mixed state/i.test(m)) {
+    return "Nest doesn't know how to toggle that box from a mixed state, so it left the file alone."
+  }
+  if (/checkbox index out of range|checkbox marker not found/i.test(m)) {
+    return "Nest couldn't find that checkbox, so it left the file alone."
+  }
 
   return "Nest couldn't make that edit safely, so it left the file alone."
 }

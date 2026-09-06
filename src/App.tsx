@@ -22,6 +22,7 @@ import {
   isSpliceResult,
   RefuseWrite,
   siblingHtmlName,
+  toggleCheckboxInSource,
   type DateParts,
   type Priority,
   type TodoKeyword,
@@ -35,6 +36,7 @@ import {
   updateTodoInSource,
 } from './lib/org'
 import { isDesktop } from './lib/platform'
+import { plainRefuseMessage } from './lib/refuse-messages'
 import { recordUndo, takeUndo, type UndoState } from './lib/undo'
 import {
   fileMeta,
@@ -171,7 +173,7 @@ export default function App() {
         }
       } catch (err) {
         if (err instanceof RefuseWrite) {
-          setStatus(`Nest won't edit ${id}.org: ${err.message}`)
+          setStatus(`${id}.org: ${plainRefuseMessage(err)}`)
           return
         }
         throw err
@@ -325,6 +327,12 @@ export default function App() {
 
   function handleUpdateSrcBody(blockIndex: number, body: string) {
     applyEdit(activeFile, (src) => updateSrcBodyInSource(src, blockIndex, body))
+  }
+
+  function handleToggleCheckbox(index: number) {
+    // toggleCheckboxInSource returns a SpliceResult — applyEdit takes the
+    // declared-span path automatically, so no maxRegions override here.
+    applyEdit(activeFile, (src) => toggleCheckboxInSource(src, index))
   }
 
   function handleMarkDone(fileId: string, path: number[]) {
@@ -564,6 +572,7 @@ export default function App() {
                 onUpdateTableCell={handleUpdateTableCell}
                 onAddTableRow={handleAddTableRow}
                 onUpdateSrcBody={handleUpdateSrcBody}
+                onToggleCheckbox={handleToggleCheckbox}
               />
             </section>
             {showSource && (

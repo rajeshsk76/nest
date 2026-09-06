@@ -25,6 +25,8 @@ export {
   assertSafeSrcBody,
   updateSrcBodyInSource,
 } from "./org-src"
+export type { CheckboxState, OrgChecklistItemView } from "./org-checkboxes"
+export { listCheckboxes, toggleCheckboxInSource } from "./org-checkboxes"
 export type { ExportOrgOptions } from "./org-export"
 export {
   escapeHtml,

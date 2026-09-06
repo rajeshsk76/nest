@@ -1195,3 +1195,52 @@ button.tag,
 .tag-suggest:hover {
   opacity: 1;
 }
+
+/* Checkbox group — toggle existing [ ]/[X] items */
+.checklist {
+  list-style: none;
+  margin: 0.15rem 0 0.55rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.checklist-box {
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  background: #fff;
+  padding: 0 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.checklist-box.checklist-on {
+  color: var(--done);
+  border-color: #cfe0d3;
+  background: #eef5f0;
+}
+
+.checklist-box.checklist-trans {
+  color: var(--todo);
+  border-color: #e7d5bf;
+  background: #fbf4ec;
+}
+
+.checklist-text {
+  color: var(--ink);
+}
+
+.checklist-cookie {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
