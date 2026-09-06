@@ -71,4 +71,45 @@ describe('parseTagQuery + filterHeadlines', () => {
     const filtered = filterHeadlines(hits, q)
     expect(filtered.map((h) => h.title)).toEqual(['Important task'])
   })
+
+  it('matches a real :PROPERTIES: drawer entry with =', () => {
+    const source = [
+      '* Client work',
+      ':PROPERTIES:',
+      ':CLIENT: acme',
+      ':END:',
+      '* Other work',
+      ':PROPERTIES:',
+      ':CLIENT: initech',
+      ':END:',
+    ].join('\n')
+    const hits = searchHeadlines({ f1: source }, '')
+    const filtered = filterHeadlines(hits, parseTagQuery('CLIENT="acme"'))
+    expect(filtered.map((h) => h.title)).toEqual(['Client work'])
+  })
+
+  it('excludes correctly with <> against a drawer property', () => {
+    const source = [
+      '* Client work',
+      ':PROPERTIES:',
+      ':CLIENT: acme',
+      ':END:',
+      '* Other work',
+      ':PROPERTIES:',
+      ':CLIENT: initech',
+      ':END:',
+      '* No drawer here',
+      'Just prose, no properties drawer.',
+    ].join('\n')
+    const hits = searchHeadlines({ f1: source }, '')
+    const filtered = filterHeadlines(hits, parseTagQuery('CLIENT<>"acme"'))
+    expect(filtered.map((h) => h.title).sort()).toEqual(['No drawer here', 'Other work'])
+  })
+
+  it('does not match a property clause against a headline with no drawer at all', () => {
+    const source = '* No drawer here\nJust prose, no properties drawer.\n'
+    const hits = searchHeadlines({ f1: source }, '')
+    const filtered = filterHeadlines(hits, parseTagQuery('CLIENT="acme"'))
+    expect(filtered).toHaveLength(0)
+  })
 })

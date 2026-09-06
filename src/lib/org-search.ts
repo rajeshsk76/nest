@@ -11,6 +11,7 @@ export interface SearchHit {
   tags: string[]
   scheduled: string | null
   deadline: string | null
+  props: Record<string, string>
   matchedIn: 'title' | 'body'
 }
 
@@ -57,11 +58,29 @@ function nodeText(node: OrgNode, source: string): string {
   return source.slice(pos.start.offset, pos.end.offset)
 }
 
+interface SectionData {
+  body: Map<string, string>
+  props: Map<string, Record<string, string>>
+}
+
+function propsFromDrawer(kids: OrgNode[]): Record<string, string> {
+  const drawer = kids.find((c) => c.type === 'property-drawer') as
+    | (OrgNode & { children?: Array<{ type: string; key?: string; value?: string }> })
+    | undefined
+  if (!drawer?.children) return {}
+  const out: Record<string, string> = {}
+  for (const p of drawer.children) {
+    if (p.type === 'node-property' && p.key) out[p.key] = p.value ?? ''
+  }
+  return out
+}
+
 /**
  * Raw source text of everything under a headline except its title line and
- * nested sub-headlines (those are searched as their own hits).
+ * nested sub-headlines (those are searched as their own hits), plus each
+ * headline's own :PROPERTIES: drawer entries. One walk, keyed by path.
  */
-function collectBodyText(node: OrgNode, path: number[], source: string, out: Map<string, string>): void {
+function collectSectionData(node: OrgNode, path: number[], source: string, out: SectionData): void {
   if (node.type === 'section') {
     const kids = ('children' in node && Array.isArray(node.children) ? node.children : []) as OrgNode[]
     const bodyText = kids
@@ -69,12 +88,13 @@ function collectBodyText(node: OrgNode, path: number[], source: string, out: Map
       .map((c) => nodeText(c, source))
       .filter(Boolean)
       .join('\n')
-    out.set(pathKey(path), bodyText)
+    out.body.set(pathKey(path), bodyText)
+    out.props.set(pathKey(path), propsFromDrawer(kids))
 
     let sectionIndex = 0
     for (const child of kids) {
       if (child.type === 'section') {
-        collectBodyText(child, [...path, sectionIndex], source, out)
+        collectSectionData(child, [...path, sectionIndex], source, out)
         sectionIndex += 1
       }
     }
@@ -85,10 +105,10 @@ function collectBodyText(node: OrgNode, path: number[], source: string, out: Map
     let sectionIndex = 0
     for (const child of node.children as OrgNode[]) {
       if (child.type === 'section') {
-        collectBodyText(child, [...path, sectionIndex], source, out)
+        collectSectionData(child, [...path, sectionIndex], source, out)
         sectionIndex += 1
       } else {
-        collectBodyText(child, path, source, out)
+        collectSectionData(child, path, source, out)
       }
     }
   }
@@ -102,8 +122,8 @@ export function searchHeadlines(sources: Record<string, string>, query: string):
   for (const [fileId, source] of Object.entries(sources)) {
     const headlines = listHeadlines(source, fileId)
     const fileTags = fileTagsFrom(source)
-    const bodyByPath = new Map<string, string>()
-    collectBodyText(parseOrg(source), [], source, bodyByPath)
+    const sectionData: SectionData = { body: new Map(), props: new Map() }
+    collectSectionData(parseOrg(source), [], source, sectionData)
 
     const ancestors: Array<{ path: number[]; tags: string[] }> = []
     for (const hw of headlines) {
@@ -118,7 +138,7 @@ export function searchHeadlines(sources: Record<string, string>, query: string):
 
       ancestors.push({ path: hw.path, tags: hw.tags })
 
-      const body = bodyByPath.get(pathKey(hw.path)) ?? ''
+      const body = sectionData.body.get(pathKey(hw.path)) ?? ''
       const titleMatch = hw.title.toLowerCase().includes(needle)
       const bodyMatch = !titleMatch && body.toLowerCase().includes(needle)
       if (!titleMatch && !bodyMatch) continue
@@ -133,6 +153,7 @@ export function searchHeadlines(sources: Record<string, string>, query: string):
         tags,
         scheduled: hw.scheduled,
         deadline: hw.deadline,
+        props: sectionData.props.get(pathKey(hw.path)) ?? {},
         matchedIn: titleMatch ? 'title' : 'body',
       })
     }
@@ -224,8 +245,8 @@ export function parseTagQuery(query: string): TagQuery {
 /**
  * PRIORITY, TODO, ITEM, LEVEL, SCHEDULED, DEADLINE and TAGS are Org's
  * "special properties" — derived from headline structure rather than a
- * :PROPERTIES: drawer entry. SearchHit carries exactly these fields, so
- * property clauses match against them by name (case-insensitive key).
+ * :PROPERTIES: drawer entry. Used as the fallback when a property clause's
+ * key has no matching entry in the headline's own drawer (see matchesProp).
  */
 function specialPropValue(hit: SearchHit, key: string): string | null {
   switch (key.toUpperCase()) {
@@ -248,8 +269,17 @@ function specialPropValue(hit: SearchHit, key: string): string | null {
   }
 }
 
+/** Case-insensitive lookup into a headline's :PROPERTIES: drawer. */
+function drawerPropValue(props: Record<string, string>, key: string): string | null {
+  const target = key.toUpperCase()
+  for (const [k, v] of Object.entries(props)) {
+    if (k.toUpperCase() === target) return v
+  }
+  return null
+}
+
 function matchesProp(hit: SearchHit, prop: TagQuery['props'][number]): boolean {
-  const actual = specialPropValue(hit, prop.key)
+  const actual = drawerPropValue(hit.props, prop.key) ?? specialPropValue(hit, prop.key)
   const equal = actual !== null && actual === prop.value
   return prop.op === '=' ? equal : !equal
 }
