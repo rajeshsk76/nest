@@ -148,6 +148,48 @@ export function zeroEditWrite(source: string): string {
   return source
 }
 
+/**
+ * A mutation that declares exactly which byte ranges it touched.
+ *
+ * Some operations legitimately change several non-adjacent lines from one
+ * user action. Toggling a checkbox updates the box, every ancestor item's
+ * [ ]/[-]/[X] state, and every ancestor cookie — four scattered lines from
+ * one click. `changedRegions` counts contiguous hunks, so it cannot express
+ * that without being loosened, and loosening a guard to fit a feature is how
+ * guards stop meaning anything.
+ *
+ * Declaring the spans is strictly stronger: instead of "some small number of
+ * regions changed" we verify "these exact ranges changed and nothing else",
+ * by rebuilding the result from the original and comparing.
+ */
+export interface SpliceResult {
+  next: string
+  edits: Edit[]
+}
+
+/** applyEdits, but returns the normalised spans alongside the result. */
+export function applyEditsTracked(source: string, edits: Array<Edit | null>): SpliceResult {
+  const sorted = edits.filter((e): e is Edit => e !== null).sort((a, b) => a.start - b.start)
+  return { next: applyEdits(source, sorted), edits: sorted }
+}
+
+/**
+ * Refuse unless `after` is exactly `before` with the declared spans replaced.
+ * Catches any byte that moved outside a span the mutator owned up to.
+ */
+export function assertOnlySpansChanged(before: string, after: string, edits: Edit[]): void {
+  if (edits.length === 0) throw new RefuseWrite('no edit spans declared')
+  const rebuilt = applyEdits(before, edits)
+  if (rebuilt !== after) {
+    throw new RefuseWrite('write touched bytes outside its declared spans')
+  }
+}
+
+/** True when a mutator returned declared spans rather than a bare string. */
+export function isSpliceResult(v: string | SpliceResult): v is SpliceResult {
+  return typeof v !== 'string'
+}
+
 /** Count discrete changed line-hunks between two strings (0 if identical). */
 export function changedRegions(before: string, after: string): number {
   if (before === after) return 0

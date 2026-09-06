@@ -6,6 +6,7 @@ import { OutlineEditor } from './components/OutlineEditor'
 import { SourcePanel } from './components/SourcePanel'
 import { TodayView } from './components/TodayView'
 import type { NestFileId } from './fixtures'
+import type { Edit, SpliceResult } from './lib/org'
 import {
   captureTodo,
   addTableRowInSource,
@@ -13,10 +14,12 @@ import {
   exportOrgToHtml,
   insertHeadingInSource,
   listHeadlines,
+  assertOnlySpansChanged,
   changedRegions,
   markDoneInSource,
   moveSubtreeInSource,
   promoteSubtreeInSource,
+  isSpliceResult,
   RefuseWrite,
   siblingHtmlName,
   type DateParts,
@@ -138,13 +141,20 @@ export default function App() {
   const applyEdit = useCallback(
     (
       id: NestFileId,
-      mutate: (source: string) => string,
+      mutate: (source: string) => string | SpliceResult,
       opts: { maxRegions?: number } = {},
     ) => {
       const before = filesRef.current[id]
       let after: string
+      let declared: Edit[] | null = null
       try {
-        after = mutate(before)
+        const result = mutate(before)
+        if (isSpliceResult(result)) {
+          after = result.next
+          declared = result.edits
+        } else {
+          after = result
+        }
       } catch (err) {
         if (err instanceof RefuseWrite) {
           setStatus(`Nest won't edit ${id}.org: ${err.message}`)
@@ -153,11 +163,26 @@ export default function App() {
         throw err
       }
       if (after === before) return
-      const regions = changedRegions(before, after)
-      const maxRegions = opts.maxRegions ?? 1
-      if (regions < 1 || regions > maxRegions) {
-        setStatus(`Refused: that edit would change ${regions} regions of ${id}.org`)
-        return
+      if (declared) {
+        // Strongest check: nothing moved outside the spans the mutator declared.
+        try {
+          assertOnlySpansChanged(before, after, declared)
+        } catch (err) {
+          if (err instanceof RefuseWrite) {
+            setStatus(`Refused: ${err.message} in ${id}.org`)
+            return
+          }
+          throw err
+        }
+      } else {
+        // Mutators that still return a bare string keep the region count.
+        // Migrating one to SpliceResult always tightens its guard.
+        const regions = changedRegions(before, after)
+        const maxRegions = opts.maxRegions ?? 1
+        if (regions < 1 || regions > maxRegions) {
+          setStatus(`Refused: that edit would change ${regions} regions of ${id}.org`)
+          return
+        }
       }
       filesRef.current = { ...filesRef.current, [id]: after }
       setFiles((prev) => ({ ...prev, [id]: after }))
