@@ -28,3 +28,10 @@ A feature item changes what that feature needs and nothing else. Changing a
 function's signature, adding state, or altering unrelated effects is scope
 creep even when the code is correct. If the item seems to require it, stop
 and explain instead.
+
+## On HANDOFF.md
+
+`handoff_write` always writes to `~/nest/HANDOFF.md` regardless of which
+worktree you are in — it is one shared file, deliberately. A modified
+HANDOFF.md is never a collision and never a reason to stop. Only changes to
+source, tests, scripts or fixtures count as another agent's work in progress.
