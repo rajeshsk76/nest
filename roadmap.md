@@ -6,6 +6,9 @@ Org mode for people who will not install Emacs. Plain .org files you own. Captur
 
 ## Shipped
 
+- **Track B1–B5** — `#+TAGS:` / `#+STARTUP:` scrape; rendered markup default; drawers hidden in outline; plain-language refusals. **B6 undo not yet.**
+
+
 - Web — Vite + React outline, uniorg round-trip, Capture, Today
 - Desktop — Tauri 2, folder on disk as truth
 - Tags and priorities — [#A/B/C], :tag:, Today filters + sort
