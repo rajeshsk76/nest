@@ -8,7 +8,7 @@ The product guarantee: bytes the user did not edit do not move.
 3. Never weaken a check to make code pass. No it.skip, no lowering --gate,
    no helper defined inside scripts/ that shadows src/lib.
 4. Emacs is the oracle. org-element.el is the only spec Org has.
-5. Run `npm run conformance:zero-edit` and `npx vitest run` before every commit.
+5. Run `npm run test:all` and `npm run conformance:zero-edit` before every commit.
 6. Never commit inbox.org or projects.org from the repo root — those are
    the user's real tasks.
 
