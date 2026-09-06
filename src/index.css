@@ -1141,3 +1141,19 @@ button.tag,
   outline: none;
   background: #fff;
 }
+
+/* Track B — tag suggestions from #+TAGS: */
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  max-width: 16rem;
+}
+.tag-suggest {
+  opacity: 0.85;
+  border-style: dashed;
+}
+.tag-suggest:hover {
+  opacity: 1;
+}

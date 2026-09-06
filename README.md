@@ -71,7 +71,10 @@ Browser mode remains fully supported for UI work without Rust.
 - Org tags `:tag:` / `:tag1:tag2:` (chips add/remove; rewrite .org)
 - Today sticky priority badges + tag chips for filtering; sort A → B → C → none
 - Capture parses `#A` / `[#B]` and trailing `:tag:` from the title text
-- Elegant markup in the outline (display only): *bold* /italic/ _underline_ +strike+ =verbatim= ~code~, clickable [[url][label]] / [[url]]; raw markers stay in the source panel and on disk
+- Elegant markup in the outline (display only): *bold* /italic/ _underline_ +strike+ =verbatim= ~code~, clickable [[url][label]] / [[url]]; raw markers stay in the source panel and on disk; idle outline / Today titles render markup by default (raw only while editing)
+- File-level Org scrape: `#+TAGS:` / `#+FILETAGS:` suggest tags in the picker and Today chips; `#+STARTUP: overview` folds the outline by default; `logdone` / `logrepeat` are read and exposed (Nest does not write Emacs state logs yet)
+- `:PROPERTIES:` / `:LOGBOOK:` drawers stay out of the outline body (source panel still shows full bytes)
+- Calm plain-English status when Nest refuses an unsafe edit (technical detail in the console)
 - Structural editing: fold/unfold subtree (Tab / chevron — visibility only, no disk write); promote/demote stars; move subtree among siblings; insert same-level heading — all structure writes are byte-splice
 - Transparent tables: detect `| col | col |` blocks; edit cells in the outline; Tab between cells; add row — rewrites only the table region (Emacs-aligned pipes)
 - Source blocks: detect `#+BEGIN_SRC lang` … `#+END_SRC`; language badge + monospace editable body; rewrites only the interior (fences stay valid Org); never execute / tangle / Babel
@@ -113,7 +116,7 @@ Corpus fixtures: `fixtures/emacs-corpus/repeater-mark-done.org`, `fixtures/emacs
 Not Emacs Org parity:
 
 - UI focuses on headlines, TODO/DONE, priorities, tags, planning timestamps, simple body text, Org tables, and source blocks
-- Drawers, clocks, properties drawers UI are best-effort via source edits (outline shows emphasis + links for display)
+- Drawers, clocks, properties drawers UI are best-effort via source edits; outline hides PROPERTIES/LOGBOOK by default (Track B4); emphasis + links for display
 - Tables: no nested tables, no spreadsheet / TBLFM editing (existing #+TBLFM lines are preserved)
 - Tag filter is AND (item must have every selected tag); no full agenda / refile
 - Title edits splice title bytes; display markup is parse-for-display only (not a structural rewrite)

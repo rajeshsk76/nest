@@ -27,6 +27,7 @@
 | **Slice 3** | Transparent tables: parse/edit/add-row via table-span byte-splice; Tab between cells |
 | **Slice 4** | Superior source code: detect #+BEGIN_SRC; language badge + monospace body; interior-only splice |
 | **Slice 5** | Export and publish: Org → single-file HTML (sibling next to .org; never replaces); web download + desktop sibling write |
+| **Track B1–B5** | Scrape `#+TAGS:` / `#+FILETAGS:` for tag picker; scrape `#+STARTUP:` (overview → default fold; logdone/logrepeat read-only); rendered markup default; drawers hidden in outline; plain-language RefuseWrite. **B6 undo not yet.** |
 
 **Repo:** https://github.com/rajeshsk76/nest
 

@@ -1,4 +1,5 @@
 #+TITLE: Inbox
+#+TAGS: nest(n) inbox(i) home(h) errands(e) reading(r) markup(m) work(w) urgent(u)
 
 * TODO [#A] Capture more ideas into Nest :inbox:nest:
 :PROPERTIES:
