@@ -85,6 +85,22 @@ Browser mode remains fully supported for UI work without Rust.
 - Tauri 2 desktop shell with dialog folder picker, fs read/write, and remembered workspace path (plugin-store)
 - Desktop: Capture / Today / editor persist to on-disk inbox.org and projects.org
 
+## Emacs oracles (Track A)
+
+Nest treats Emacs as the Org oracle for repeater Mark DONE and numeric table alignment.
+
+Locally (requires `emacs` / `emacs-nox` on PATH — proven with GNU Emacs 30.1):
+
+```bash
+npm run test:emacs-oracle
+npm run test:emacs-table-oracle
+npm run conformance:emacs-corpus
+```
+
+CI (`.github/workflows/ci.yml`) installs `emacs-nox` on `ubuntu-latest`, runs unit tests, both oracles, and the corpus runner. Missing Emacs fails closed (non-zero exit) — never skips green.
+
+Corpus fixtures: `fixtures/emacs-corpus/repeater-mark-done.org`, `fixtures/emacs-corpus/numeric-table.org`.
+
 ## Stack
 
 - Vite + TypeScript + React

@@ -40,8 +40,8 @@ Org integrity is a product gate, not a nice-to-have.
 
 - **Byte-splice required** for edits: change only the bytes that must change; do not regenerate the whole file through parse → stringify for routine writes (Mark DONE, title, tags, planning).
 - **Installer gated** on ≥95% byte-identical zero-edit saves (parse/load/save with no intentional mutation must leave the file unchanged for that share of a public corpus).
-- **Public `emacs --batch` corpus** number TBD — measure Nest vs Emacs on the same fixtures; publish the score once the corpus exists.
-- Falsification (`docs/falsification-repeater.md`): Mark DONE **byte-splice PASS** (file integrity); repeater DONE **semantics PASS** vs Emacs (test:emacs-oracle). Table numeric align **PASS** vs Emacs (test:emacs-table-oracle; Track A.2). Zero-edit gate via conformance:zero-edit (>=95%, includes table-numeric-align).
+- **Public `emacs --batch` corpus (Track A.4)** — `conformance:emacs-corpus` runs repeater + numeric-table fixtures vs Emacs (`emacs-nox` in CI); fail-closed if emacs missing.
+- Falsification (`docs/falsification-repeater.md`): Mark DONE **byte-splice PASS** (file integrity); repeater DONE **semantics PASS** vs Emacs (test:emacs-oracle). Table numeric align **PASS** vs Emacs (test:emacs-table-oracle; Track A.2). Zero-edit gate via conformance:zero-edit (>=95%, includes table-numeric-align). Corpus gate: conformance:emacs-corpus (Track A.4).
 
 ## Rule
 

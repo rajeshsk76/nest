@@ -82,4 +82,4 @@ PASS on the tonight gate: Mark DONE no longer destroys the file via full uniorg-
 
 Re-run via the test suite and conformance:zero-edit.
 
-Do not claim full Emacs coexistence until repeater DONE matches Emacs and the public emacs-batch corpus score is published (conformance-emacs-corpus scaffold only).
+Repeater DONE matches Emacs (test:emacs-oracle). Table numeric align matches Emacs (test:emacs-table-oracle). Track A.4 corpus runner (conformance:emacs-corpus) pins those fixtures under fixtures/emacs-corpus/ and fails closed without emacs.
