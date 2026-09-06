@@ -1,3 +1,10 @@
+> **Superseded, kept for history. Do not plan from this file.**
+>
+> Its "Shipped" list claims Track B1-B5 including rendered-markup default and
+> hidden drawers. Those are B3 and B4 and they do not exist — only B5 shipped.
+> Current state is `HANDOFF.md`; the plan is `docs/PLAN.md`; the full Org
+> feature surface is `docs/FEATURES.md`.
+
 # Roadmap
 
 ## North star

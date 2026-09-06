@@ -1,3 +1,13 @@
+> **Superseded, kept for history. Do not build from this file.**
+>
+> It describes the pre-splice architecture — `uniorg-parse / uniorg-stringify`
+> round-tripping the whole file — which is exactly the write path that was
+> removed. It also gives `npm test` as the bar; that no longer covers the
+> Emacs oracles (`npm run test:all` does).
+>
+> Current rules are `CLAUDE.md`, reasons `docs/CONTEXT.md`, plan
+> `docs/PLAN.md`, features `docs/FEATURES.md`, lanes `docs/COORDINATION.md`.
+
 # Nest — ten-slice build prompts
 
 Calm Nest voice. One slice at a time. Ship, test, Emacs smoke check, then stop.
