@@ -57,6 +57,26 @@ export function todoKeywordsFrom(source: string): string[] {
   return [...new Set(out)]
 }
 
+/**
+ * Scrapes #+TAGS: lines for declared tag names.
+ * Handles fast-access keys (`home(h)` -> `home`) and mutually exclusive
+ * groups wrapped in `{ }` (the braces are stripped, tags inside still count).
+ */
+export function tagsFrom(source: string): string[] {
+  const out: string[] = []
+  const re = /^[ \t]*#\+TAGS:(.*)$/gim
+  let m: RegExpExecArray | null
+  while ((m = re.exec(source))) {
+    for (const tok of m[1]!.split(/\s+/)) {
+      const stripped = tok.replace(/[{}]/g, '').replace(/\([^)]*\)$/, '')
+      const cleaned = normalizeTag(stripped)
+      if (!cleaned) continue
+      out.push(cleaned)
+    }
+  }
+  return [...new Set(out)]
+}
+
 export function parseOrg(source: string): OrgData {
   return parse(source, {
     trackPosition: true,

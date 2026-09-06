@@ -3,6 +3,7 @@ import {
   formatOrgStamp,
   listHeadlines,
   sameDay,
+  tagsFrom,
   todayParts,
   normalizeTags,
 } from "./org-core"
@@ -176,6 +177,7 @@ export function collectUniqueTags(
 ): string[] {
   const seen = new Set<string>()
   for (const file of files) {
+    for (const tag of tagsFrom(file.source)) seen.add(tag)
     for (const h of listHeadlines(file.source, file.id)) {
       for (const tag of h.tags) seen.add(tag)
     }
