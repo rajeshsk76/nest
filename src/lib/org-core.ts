@@ -77,6 +77,43 @@ export function tagsFrom(source: string): string[] {
   return [...new Set(out)]
 }
 
+export interface StartupOptions {
+  visibility: 'overview' | 'content' | 'showall' | null
+  logDone: boolean | null
+  logRepeat: boolean | null
+}
+
+const STARTUP_VISIBILITY = new Set(['overview', 'content', 'showall'])
+
+/**
+ * Scrapes #+STARTUP: lines for the visibility and logging keywords Emacs
+ * recognizes (org-element.el). Later lines override earlier ones, matching
+ * Org's own last-keyword-wins semantics for conflicting settings.
+ */
+export function startupOptionsFrom(source: string): StartupOptions {
+  const out: StartupOptions = { visibility: null, logDone: null, logRepeat: null }
+  const re = /^[ \t]*#\+STARTUP:(.*)$/gim
+  let m: RegExpExecArray | null
+  while ((m = re.exec(source))) {
+    for (const tokRaw of m[1]!.split(/\s+/)) {
+      const tok = tokRaw.toLowerCase()
+      if (!tok) continue
+      if (STARTUP_VISIBILITY.has(tok)) {
+        out.visibility = tok as StartupOptions['visibility']
+      } else if (tok === 'logdone') {
+        out.logDone = true
+      } else if (tok === 'nologdone') {
+        out.logDone = false
+      } else if (tok === 'logrepeat') {
+        out.logRepeat = true
+      } else if (tok === 'nologrepeat') {
+        out.logRepeat = false
+      }
+    }
+  }
+  return out
+}
+
 export function parseOrg(source: string): OrgData {
   return parse(source, {
     trackPosition: true,
