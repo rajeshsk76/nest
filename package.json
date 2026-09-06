@@ -14,7 +14,7 @@
     "prepreview": "node scripts/ensure-sample-orgs.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 5173 --strictPort",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"**/*-oracle.test.ts\"",
     "test:watch": "vitest",
     "lint": "oxlint",
     "ensure-sample-orgs": "node scripts/ensure-sample-orgs.mjs",
@@ -25,7 +25,9 @@
     "conformance:zero-edit": "vite-node scripts/conformance-zero-edit.mjs",
     "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs",
     "test:emacs-oracle": "node scripts/emacs-repeater-oracle.mjs",
-    "test:emacs-table-oracle": "node scripts/emacs-table-oracle.mjs"
+    "test:emacs-table-oracle": "node scripts/emacs-table-oracle.mjs",
+    "test:oracles": "vitest run --no-file-parallelism src/lib/org-repeater-oracle.test.ts src/lib/org-table-oracle.test.ts",
+    "test:all": "npm run test && npm run test:oracles"
   },
   "repository": {
     "type": "git",

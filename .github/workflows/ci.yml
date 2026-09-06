@@ -18,7 +18,7 @@ jobs:
       - name: Install JS deps
         run: bash scripts/ci-js-deps.sh
       - name: Unit tests
-        run: npm test
+        run: npm run test:all
       - name: Emacs repeater oracle
         run: npm run test:emacs-oracle
       - name: Emacs table oracle
