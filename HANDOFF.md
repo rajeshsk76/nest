@@ -1,84 +1,90 @@
 # HANDOFF
 
-Last agent: Claude Code
+Last agent: Claude (review lane)
 Date: 2026-09-06
 Branch: main
+HEAD: 760ed49
+
+## Verified baseline
+
+Independently re-derived from a clean clone at `760ed49`:
+
+```
+npm run test:all      80/80 + 2/2
+npx tsc -b            clean
+conformance:zero-edit 130/130 (100.0%)
+emacs oracles         both PASS standalone
+check_invariants      CLEAN
+```
+
+`npm test` alone no longer covers the Emacs oracles — use `test:all`.
+Any red you see is yours.
 
 ## Done
-Track A complete (A1-A6). Repeater semantics verified against Emacs 4/4.
 
-Track B, Claude Code's assigned lane item — **B1 + B2** — complete:
-- B1 `0f5b315` — tagsFrom() scrapes #+TAGS: (fast-access keys, { } exclusive
-  groups, multiple lines); collectUniqueTags() now folds in declared tags
-  for the Today tag-picker chips.
-- B2 `11928ee` — startupOptionsFrom() scrapes #+STARTUP: for
-  overview/content/showall and logdone/nologdone/logrepeat/nologrepeat,
-  later line wins on conflict.
-Both read-only. No write function touched (applyEdits, spliceHead,
-headlineContext, repadTags, update*InSource, markDoneInSource all
-unmodified). No existing test/script/fixture modified — new test files
-only (org-tags-declared.test.ts, org-startup.test.ts).
+- **Track A** (A1–A6). Repeater semantics match Emacs on `+1w`, `++1m`,
+  `.+1d` and plain timestamps. Table numeric right-align. GPL-3 licence.
+  Pre-commit hook armed and observed refusing a sabotaged write path at 48.5%.
+- **B1** `0f5b315` — `tagsFrom()` scrapes `#+TAGS:` (fast-access keys,
+  `{ }` exclusive groups, multiple lines); declared tags feed the tag picker.
+- **B2** `11928ee` — `startupOptionsFrom()` scrapes `#+STARTUP:`
+  (overview/content/showall, logdone/nologdone/logrepeat/nologrepeat).
+- **B5** — `refuse-messages.ts`, plain-language refusal copy.
+- **Span guard** `760ed49` — `applyEditsTracked` / `assertOnlySpansChanged`.
+  Prerequisite for checkboxes. Mutators may declare exactly which byte ranges
+  they touched; the guard rebuilds the result and refuses anything that moved
+  outside them. Strictly stronger than the region count.
+- **Oracle scratch** `965e4bc` — oracle temp files live in `.nest-tmp/` inside
+  the repo. They previously used the system temp directory, which sandboxed
+  agents deny with EPERM, producing a red baseline unrelated to the code.
+- **Docs** `a136fca` — `docs/CONTEXT.md`, `docs/FEATURES.md`, `docs/PLAN.md`.
+  These were referenced by every agent brief for days and did not exist.
 
-Since that handoff, `origin/main` had accumulated 8 commits from another
-agent under "Track B1–B5 (complete cont)" that diverged from the same base.
-Two things about that merge, recorded here for whoever picks up B3–B6:
-1. It was **broken at push time** — its `org-agenda.ts` imported `tagsFrom`
-   from `org-core.ts`, but that other branch's `org-core.ts` never defined
-   it. `npx tsc -b` on that branch alone would not have passed.
-2. Despite the "B1–B5 complete" commit titles, the actual diff (`git diff
-   2ab1313 origin/main`) only adds `refuse-messages.ts`/`.test.ts` (B5) and
-   a few lines in `TodayView.tsx` / `index.css`. There is no undo (B6), raw
-   markup toggle (B3), or drawer-default change (B4) in it. **B3, B4 and B6
-   are not actually done**, whatever the commit messages claim — verify
-   before trusting that label.
+## Unstarted, despite the commit log
 
-Per the coordination doc's rule ("if not a clean completed handoff, discard
-and restart"), this would matter for whoever owns B3/B4/B5/B6 — but those
-are Codex's and Grok's assigned items, not mine, so I did not touch, judge
-further, or restart any of them. Flagging only.
+Seven commits on `origin/main` are titled `Track B1–B5 (complete)`. Grepping
+the tree, only B5 shipped. **B3, B4 and B6 do not exist.** Do not assume any
+of them is partially done; start each fresh.
 
-Merged `origin/main` into local `main` (merge commit `5d556cc`), since my
-own `org-core.ts` supplied the missing `tagsFrom` and fixed the build. Then
-added `docs/COORDINATION.md` (`dbed24c`) at the human's request — sequencing
-doc, not a roadmap item, touches no source.
+- **B3** raw markup toggle, off by default
+- **B4** `:PROPERTIES:` / `:LOGBOOK:` drawers collapsed by default
+- **B6** one-level undo
 
-## In progress
-Nothing. No B/C-track item was started or continued this session beyond
-re-verifying B1+B2 still hold after the merge above.
+Also unstarted: `org-search.ts` (a previous agent stopped at its usage limit
+during orientation, nothing committed) and C1 HTML export.
 
-## Next
-Per `docs/COORDINATION.md` serial lane, in order: B6 (Grok), then B3, B4, B5
-(Codex). C1 (Gemini) runs in parallel in the `../nest-export` worktree
-(branch `track-c1-export`, created off `5d556cc`). Given the flag above,
-whoever runs B3/B4/B6 should treat the existing `origin/main` state for
-those items as **not present**, not as a partial implementation to build on.
+## Lanes
 
-## Do not touch
-src/lib/org-core.ts write functions: applyEdits, spliceHead, headlineContext,
-repadTags, update*InSource, markDoneInSource. Claude only. Same for
-conformance scripts and existing test files.
+Two agents. One item each, verified before the next starts.
 
-## Status at handoff (re-verified at `dbed24c`, after the merge)
-nest-mcp (`scripts/nest-mcp.mjs`) is still not registered as an MCP server
-in this Claude Code session (no `.mcp.json`) — ran the underlying commands
-by hand again:
-- run_gate (`npm run conformance:zero-edit`): **PASS**, 130/130 (100.0%).
-- run_tests / vitest: 73/77 passing. Same 3 pre-existing failures as before
-  the merge, confirmed untouched by any commit since `2ab1313` (table-cell
-  splice assertion in `org-more.test.ts`, Emacs repeater-oracle mismatch,
-  Emacs table-oracle timeout on this sandbox's Emacs 28.2). The 4 new
-  passes are `refuse-messages.test.ts` from the merged-in branch.
-- run_tests / tsc: same pre-existing TS6133 unused-import noise in
-  `org.test.ts` / `org-more.test.ts` / `org-repeater.test.ts`, nothing new.
-- check_invariants (manual): clean, 0 violations — no stringifyOrg in the
-  write path, no skipped/todo tests, gate still 95, no conformance script
-  shadows src/lib, no inbox.org/projects.org tracked or staged.
-- emacs_oracle: covered by the vitest oracle tests above (org-repeater and
-  org-table); both fail in this environment as noted, pre-existing.
+| Agent | Tree | Item |
+|---|---|---|
+| Codex | `~/nest` | B6 undo, then B3, then B4 |
+| Claude Code | `~/nest-search` | `org-search.ts` |
+| Claude (review) | — | write path, scripts, existing tests, second verification |
 
-Working tree has three untracked, pre-existing, unrelated files not part of
-any commit here: `setup-nest-mcp.sh`, `src-tauri/Cargo.lock`,
-`src-tauri/icons/` (Tauri build artifacts / a local bootstrap script,
-present before this session's work).
+Worktrees `~/nest-search` (branch `track-search`) and `~/nest-export`
+(branch `track-c1-export`) exist and are rebased on `origin/main`.
 
-SAFE FOR INDEPENDENT SECOND VERIFICATION: YES
+## Next after Track B
+
+The checkbox group — the largest Tier 1 gap. Nest cannot tick a box: no
+`[ ]`/`[X]` toggle, no `[/]` or `[%]` cookies, no list item editing.
+
+Four rules, verified against Emacs 29.3. Get these wrong and the file
+disagrees with Emacs on every partial list:
+
+1. State propagates all the way up; cookies count **direct children only**.
+2. `[X]` when all direct children are checked, `[-]` when some are.
+3. Toggling a parent that has children does nothing — its state is derived.
+4. A headline cookie works with no list cookie present.
+
+The mutator returns `SpliceResult` declaring every touched span: the box,
+each ancestor's state, each ancestor cookie. Ships with a `checkbox-toggle`
+conformance check and an Emacs oracle case in the same commit.
+
+## Known weak spot
+
+`opts.maxRegions` in `App.tsx` — a dial added once to fit the repeater.
+Migrating `markDoneInSource` to return `SpliceResult` removes the need for it
+and tightens the guard. Good filler item.

@@ -24,11 +24,11 @@ verified before the next starts.
 
 | Order | Item | Assigned | Touches write path |
 |-------|------|----------|--------------------|
-| 1 | B1 + B2 — `#+TAGS:` / `#+STARTUP:` scrapes | Claude Code | no |
-| 2 | B6 — one-level undo | Grok | no |
+| 1 | B1 + B2 — `#+TAGS:` / `#+STARTUP:` scrapes | done `0f5b315` `11928ee` | no |
+| 2 | B6 — one-level undo | Codex | no |
 | 3 | B3 — raw markup toggle, off by default | Codex | no |
 | 4 | B4 — drawers collapsed by default | Codex | no |
-| 5 | B5 — plain-language refusal messages | Codex | no |
+| 5 | B5 — plain-language refusal messages | done | no |
 
 Whoever has credits takes the next item. The order matters more than who runs
 it. B6 sits before B3–B5 deliberately: undo is what changes how the app feels,
@@ -38,7 +38,7 @@ and it should be in place before serious dogfooding starts.
 
 | Item | Assigned | Touches write path |
 |------|----------|--------------------|
-| C1 — Org to HTML export | Gemini | no |
+| C1 — Org to HTML export | unassigned | no |
 
 Runs from day one in a separate worktree. Should touch only new files plus one
 import.
@@ -115,3 +115,35 @@ tools) or C4 (signed installer).
 By then there will be enough real use to know whether the non-coder surface
 actually works. That should decide what comes next — not the roadmap deciding
 in advance.
+
+---
+
+## Rules learned the hard way
+
+Each of these cost an evening. They are not style preferences.
+
+**A commit message may not claim a plan item is complete.** `HANDOFF.md`
+records completion, and only after a human has confirmed the behaviour exists
+in the working tree. Seven commits titled `Track B1-B5 (complete)` shipped one
+of five items. Run `git show --stat HEAD` after every commit and confirm the
+diff matches what the message says. This has caught three bad commits,
+including one of our own where a failed `git add` left the message claiming
+two files it never added.
+
+**The tree is left clean between items.** Anything untracked is committed or
+deleted before handing over. An agent cannot distinguish "clutter" from
+"someone else's work in progress", and asking wastes a round trip.
+
+**No `git am`, `git checkout`, `git pull` or rebase in a tree with a live
+agent session.** Stop the session or use a worktree. This happened twice and
+was survivable only by luck.
+
+**A red baseline is not automatically a code problem.** If the Emacs oracles
+fail with a subprocess error rather than an assertion failure, that is an
+environment limitation. Report it, run the other three checks, say so in the
+commit. Never add a skip, a try/catch or a relaxed timeout to make an oracle
+pass — the oracle is what caught the repeater bug that byte checking missed.
+
+**A check you have never seen fail is not yet a check.** Both the gate and the
+pre-commit hook were verified by deliberately sabotaging the write path and
+confirming a refusal at 48.5%.
