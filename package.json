@@ -22,7 +22,7 @@
     "tauri:build": "tauri build",
     "free-port": "node scripts/free-port.mjs",
     "conformance:zero-edit": "vite-node scripts/conformance-zero-edit.mjs",
-    "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs --dry-run",
+    "conformance:emacs-corpus": "node scripts/conformance-emacs-corpus.mjs",
     "test:emacs-oracle": "node scripts/emacs-repeater-oracle.mjs",
     "test:emacs-table-oracle": "node scripts/emacs-table-oracle.mjs"
   },
