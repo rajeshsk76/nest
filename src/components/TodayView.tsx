@@ -12,6 +12,7 @@ import { MarkupText } from './MarkupText'
 const FILTER_STORAGE_KEY = 'nest.today.filters.v1'
 
 interface TodayViewProps {
+  rawMarkup?: boolean
   files: Array<{ id: string; source: string }>
   onMarkDone: (fileId: string, path: number[]) => void
   onSetPriority?: (fileId: string, path: number[], priority: TodayItem['priority']) => void
@@ -41,7 +42,7 @@ function toggleValue<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value]
 }
 
-export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) {
+export function TodayView({ files, onMarkDone, onSetPriority, rawMarkup = false }: TodayViewProps) {
   const [filters, setFilters] = useState<TodayFilters>(() =>
     typeof localStorage !== 'undefined' ? loadStickyFilters() : emptyTodayFilters(),
   )
@@ -189,7 +190,7 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
                     </button>
                   )
                 )}
-                <span className="today-title"><MarkupText text={item.title} /></span>
+                <span className="today-title"><MarkupText text={item.title} raw={rawMarkup} /></span>
                 {item.tags.map((tag) => (
                   <button
                     key={tag}

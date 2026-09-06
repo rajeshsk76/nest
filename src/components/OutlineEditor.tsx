@@ -21,6 +21,7 @@ import { PlanningEditor } from './PlanningEditor'
 interface OutlineEditorProps {
   fileId: string
   source: string
+  rawMarkup?: boolean
   onCycleTodo: (path: number[], next: TodoKeyword) => void
   onRename: (path: number[], title: string) => void
   onSetPriority: (path: number[], priority: Priority) => void
@@ -84,10 +85,12 @@ function PriorityBadge({
 function HeadlineTitle({
   title,
   level,
+  rawMarkup,
   onRename,
 }: {
   title: string
   level: number
+  rawMarkup: boolean
   onRename: (title: string) => void
 }) {
   const [draft, setDraft] = useState(title)
@@ -118,7 +121,7 @@ function HeadlineTitle({
         aria-label={`Headline level ${level}`}
         title="Click to edit title (raw Org markers)"
       >
-        <MarkupText text={title} />
+        <MarkupText text={title} raw={rawMarkup} />
       </div>
     )
   }
@@ -287,6 +290,7 @@ function isHiddenByFold(item: HeadlineView, folded: Set<string>, headlines: Head
 
 function HeadlineRow({
   item,
+  rawMarkup,
   folded,
   hasChildren,
   tables,
@@ -307,6 +311,7 @@ function HeadlineRow({
   onUpdateSrcBody,
 }: {
   item: HeadlineView
+  rawMarkup: boolean
   folded: boolean
   hasChildren: boolean
   tables: OrgTableView[]
@@ -397,6 +402,7 @@ function HeadlineRow({
       </div>
       <HeadlineTitle
         title={item.title}
+        rawMarkup={rawMarkup}
         level={item.level}
         onRename={(title) => onRename(item.path, title)}
       />
@@ -487,6 +493,7 @@ function HeadlineRow({
 export function OutlineEditor({
   fileId,
   source,
+  rawMarkup = false,
   onCycleTodo,
   onRename,
   onSetPriority,
@@ -563,6 +570,7 @@ export function OutlineEditor({
         <HeadlineRow
           key={item.id}
           item={item}
+          rawMarkup={rawMarkup}
           folded={folded.has(item.id)}
           hasChildren={hasChildHeadlines(headlines, item)}
           tables={tables.filter(

@@ -74,7 +74,8 @@ export default function App() {
   )
   const [activeFile, setActiveFile] = useState<NestFileId>('inbox')
   const [view, setView] = useState<View>('editor')
-  const [showSource, setShowSource] = useState(true)
+  const [showSource, setShowSource] = useState(false)
+  const [rawMarkup, setRawMarkup] = useState(false)
   const [folderPath, setFolderPath] = useState<string | null>(null)
   const [desktopReady, setDesktopReady] = useState(!desktop)
   const [createdDefault, setCreatedDefault] = useState(false)
@@ -488,6 +489,14 @@ export default function App() {
         >
           projects.org
         </button>
+        <button
+          type="button"
+          className="tab"
+          aria-pressed={rawMarkup}
+          onClick={() => setRawMarkup((raw) => !raw)}
+        >
+          {rawMarkup ? 'Hide raw markup' : 'Show raw markup'}
+        </button>
         {view === 'editor' && (
           <>
             <button
@@ -523,6 +532,7 @@ export default function App() {
         ) : view === 'today' ? (
           <TodayView
             files={fileList}
+            rawMarkup={rawMarkup}
             onMarkDone={handleMarkDone}
             onSetPriority={handleTodayPriority}
           />
@@ -540,6 +550,7 @@ export default function App() {
               <OutlineEditor
                 fileId={activeFile}
                 source={activeSource}
+                rawMarkup={rawMarkup}
                 onCycleTodo={handleCycleTodo}
                 onRename={handleRename}
                 onSetPriority={handleSetPriority}

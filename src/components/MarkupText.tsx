@@ -63,7 +63,8 @@ function renderNodes(nodes: InlineMarkup[], keyPrefix = 'm'): ReactNode[] {
 }
 
 /** Display-only Org inline markup. Source bytes stay raw in the file / source panel. */
-export function MarkupText({ text }: { text: string }) {
+export function MarkupText({ text, raw = false }: { text: string; raw?: boolean }) {
+  if (raw) return <span className="markup-text">{text}</span>
   const nodes = parseInlineMarkup(text)
   return <span className="markup-text">{renderNodes(nodes)}</span>
 }
