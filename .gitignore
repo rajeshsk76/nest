@@ -12,3 +12,4 @@ src-tauri/target
 src-tauri/gen
 inbox.org
 projects.org
+.nest-tmp/

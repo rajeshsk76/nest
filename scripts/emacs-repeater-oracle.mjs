@@ -8,11 +8,26 @@
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * Scratch space for oracle temp files.
+ *
+ * These scripts used to write into the system temp directory. Sandboxed
+ * agents (Codex and friends) permit the repo directory and deny that path,
+ * so the writes failed with EPERM and the oracles reported a spurious exit 1
+ * while Emacs itself ran fine. Keeping scratch inside the repo lets the
+ * oracles run everywhere. .nest-tmp/ is gitignored.
+ */
+function scratchRoot() {
+  const dir = path.join(root, '.nest-tmp')
+  fs.mkdirSync(dir, { recursive: true })
+  return dir
+}
+
 const argv = process.argv.slice(2)
 const skipMissing = argv.includes('--skip-missing')
 const loose = argv.includes('--loose')
@@ -34,7 +49,7 @@ SCHEDULED: <2026-09-05 Fri +1w>
 const NOW = { year: 2026, month: 9, day: 6, hour: 12, minute: 17 }
 
 function runEmacs(fixture) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nest-oracle-'))
+  const dir = fs.mkdtempSync(path.join(scratchRoot(), 'nest-oracle-'))
   const inFile = path.join(dir, 'in.org')
   const outFile = path.join(dir, 'out.org')
   fs.writeFileSync(inFile, fixture)
@@ -77,7 +92,7 @@ function runNest(fixture) {
     'const h = listHeadlines(src, "oracle")[0]\n' +
     `const now = new Date(Date.UTC(${NOW.year}, ${NOW.month - 1}, ${NOW.day}, ${NOW.hour}, ${NOW.minute}))\n` +
     'process.stdout.write(markDoneInSource(src, h.path, { now }))\n'
-  const tmp = path.join(os.tmpdir(), `nest-oracle-run-${process.pid}.mts`)
+  const tmp = path.join(scratchRoot(), `nest-oracle-run-${process.pid}.mts`)
   fs.writeFileSync(tmp, runner)
   const r = spawnSync('npx', ['vite-node', tmp], {
     cwd: root,
