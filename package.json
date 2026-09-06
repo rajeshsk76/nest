@@ -32,6 +32,7 @@
     "url": "https://github.com/rajeshsk76/nest.git"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-fs": "^2.5.2",
@@ -40,7 +41,8 @@
     "react-dom": "^19.2.8",
     "uniorg": "^1.4.0",
     "uniorg-parse": "^3.2.2",
-    "uniorg-stringify": "^1.4.0"
+    "uniorg-stringify": "^1.4.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
