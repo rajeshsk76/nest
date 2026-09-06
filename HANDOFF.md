@@ -1,90 +1,70 @@
 # HANDOFF
 
-Last agent: Claude (review lane)
+Last agent: Claude Code (search lane)
 Date: 2026-09-06
-Branch: main
-HEAD: 760ed49
+Branch: track-search
+HEAD: 311e2c4 (pushed to origin/track-search; NOT merged to main)
 
-## Verified baseline
-
-Independently re-derived from a clean clone at `760ed49`:
+## Verified baseline at HEAD
 
 ```
-npm run test:all      80/80 + 2/2
-npx tsc -b            clean
-conformance:zero-edit 130/130 (100.0%)
-emacs oracles         both PASS standalone
-check_invariants      CLEAN
+npm run test:all       91/91 + 2/2 (incl. Emacs oracles)
+npx tsc -b             clean
+conformance:zero-edit  130/130 (100.0%)
+check_invariants       CLEAN
 ```
-
-`npm test` alone no longer covers the Emacs oracles — use `test:all`.
-Any red you see is yours.
 
 ## Done
 
-- **Track A** (A1–A6). Repeater semantics match Emacs on `+1w`, `++1m`,
-  `.+1d` and plain timestamps. Table numeric right-align. GPL-3 licence.
-  Pre-commit hook armed and observed refusing a sabotaged write path at 48.5%.
-- **B1** `0f5b315` — `tagsFrom()` scrapes `#+TAGS:` (fast-access keys,
-  `{ }` exclusive groups, multiple lines); declared tags feed the tag picker.
-- **B2** `11928ee` — `startupOptionsFrom()` scrapes `#+STARTUP:`
-  (overview/content/showall, logdone/nologdone/logrepeat/nologrepeat).
-- **B5** — `refuse-messages.ts`, plain-language refusal copy.
-- **Span guard** `760ed49` — `applyEditsTracked` / `assertOnlySpansChanged`.
-  Prerequisite for checkboxes. Mutators may declare exactly which byte ranges
-  they touched; the guard rebuilds the result and refuses anything that moved
-  outside them. Strictly stronger than the region count.
-- **Oracle scratch** `965e4bc` — oracle temp files live in `.nest-tmp/` inside
-  the repo. They previously used the system temp directory, which sandboxed
-  agents deny with EPERM, producing a red baseline unrelated to the code.
-- **Docs** `a136fca` — `docs/CONTEXT.md`, `docs/FEATURES.md`, `docs/PLAN.md`.
-  These were referenced by every agent brief for days and did not exist.
+- **`org-search.ts`** `3f4b4c4` — new file, library only, no UI/App.tsx.
+  `searchHeadlines`, `parseTagQuery`, `filterHeadlines`. See prior handoff
+  entry for the original design notes (FILETAGS scraping, ancestor-stack
+  tag inheritance, special-property fallback for `PROP="value"` clauses).
 
-## Unstarted, despite the commit log
+- **Property-drawer fix** `311e2c4` — review caught that `matchesProp` only
+  checked Org's special properties (TODO/PRIORITY/TAGS/etc.), so a real
+  `:PROPERTIES:` entry like `:CLIENT: acme` was invisible: `CLIENT="acme"`
+  matched nothing, `CLIENT<>"acme"` wrongly matched everything.
+  - `SearchHit` gained `props: Record<string, string>`, populated per
+    headline from its own drawer in the same tree walk that already
+    collected body text (`collectSectionData`, replacing the old
+    `collectBodyText`).
+  - `matchesProp` now checks the drawer first (case-insensitive key via
+    `drawerPropValue`), falling back to `specialPropValue` only when the
+    key isn't a real drawer entry.
+  - Added 3 tests: drawer `=` match, drawer `<>` correctly excluding, and
+    a property clause against a headline with no drawer at all (11 tests
+    total in the file now).
+  - Drawer properties are read from the headline's own drawer only — no
+    inheritance from ancestor properties. Not asked for; flag if it comes
+    up later.
 
-Seven commits on `origin/main` are titled `Track B1–B5 (complete)`. Grepping
-the tree, only B5 shipped. **B3, B4 and B6 do not exist.** Do not assume any
-of them is partially done; start each fresh.
+Both commits pushed to `origin/track-search` as fast-forwards. **Not
+merged to main** — that's the human's call per the coordination protocol.
 
-- **B3** raw markup toggle, off by default
-- **B4** `:PROPERTIES:` / `:LOGBOOK:` drawers collapsed by default
-- **B6** one-level undo
+## Lanes / push protocol (unchanged from prior handoff)
 
-Also unstarted: `org-search.ts` (a previous agent stopped at its usage limit
-during orientation, nothing committed) and C1 HTML export.
-
-## Lanes
-
-Two agents. One item each, verified before the next starts.
+Two agents were running concurrently:
 
 | Agent | Tree | Item |
 |---|---|---|
 | Codex | `~/nest` | B6 undo, then B3, then B4 |
-| Claude Code | `~/nest-search` | `org-search.ts` |
-| Claude (review) | — | write path, scripts, existing tests, second verification |
+| Claude Code | `~/nest-search` (this one) | `org-search.ts` — **done, reviewed, fixed, pushed** |
 
-Worktrees `~/nest-search` (branch `track-search`) and `~/nest-export`
-(branch `track-c1-export`) exist and are rebased on `origin/main`.
+`origin/main` has already moved to `f5d8727` ("PLAN: B3 and B4 were never
+shipped") — ahead of the `687fa6e` this branch was cut from. `track-search`
+has **not** been rebased onto that; only asked to push the branch itself,
+not touch main. Whoever merges `track-search` should rebase it onto current
+`origin/main` first and re-verify (`test:all`, `tsc -b`,
+`conformance:zero-edit`) after the rebase, since a rebase can silently
+reintroduce a stale gate result.
 
 ## Next after Track B
 
-The checkbox group — the largest Tier 1 gap. Nest cannot tick a box: no
-`[ ]`/`[X]` toggle, no `[/]` or `[%]` cookies, no list item editing.
+Unchanged: B3, B4, B6, C1, then the checkbox group (see `docs/FEATURES.md`
+and the prior handoff entry for the four Emacs-verified cookie rules).
 
-Four rules, verified against Emacs 29.3. Get these wrong and the file
-disagrees with Emacs on every partial list:
+## Known weak spot (unchanged)
 
-1. State propagates all the way up; cookies count **direct children only**.
-2. `[X]` when all direct children are checked, `[-]` when some are.
-3. Toggling a parent that has children does nothing — its state is derived.
-4. A headline cookie works with no list cookie present.
-
-The mutator returns `SpliceResult` declaring every touched span: the box,
-each ancestor's state, each ancestor cookie. Ships with a `checkbox-toggle`
-conformance check and an Emacs oracle case in the same commit.
-
-## Known weak spot
-
-`opts.maxRegions` in `App.tsx` — a dial added once to fit the repeater.
-Migrating `markDoneInSource` to return `SpliceResult` removes the need for it
-and tightens the guard. Good filler item.
+`opts.maxRegions` in `App.tsx` — still there, still a good filler item once
+`markDoneInSource` migrates to `SpliceResult`.
