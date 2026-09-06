@@ -1,0 +1,14 @@
+#+TITLE: Track A.2 numeric table
+
+* Inventory
+Misaligned Qty on purpose — Nest cell edit must Emacs-right-align.
+
+| Item | Qty |
+|------+-----|
+| eggs | 12  |
+| milk | 1   |
+
+Keep this paragraph.
+
+* Other
+Unrelated body.

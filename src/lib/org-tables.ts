@@ -20,6 +20,16 @@ export interface OrgTableView {
   tblfm: string
 }
 
+/**
+ * Emacs `org-table-number-regexp` (default). A column is right-aligned when
+ * at least `ORG_TABLE_NUMBER_FRACTION` of its non-empty cells match.
+ */
+export const ORG_TABLE_NUMBER_RE =
+  /^(?:[<>]?[-+^.0-9]*[0-9][-+^.0-9eEdDx()%:]*|[<>]?[-+]?0[xX][\da-fA-F.]+|[<>]?[-+]?[0-9]+#[0-9a-zA-Z.]+|nan|[-+u]?inf)$/
+
+/** Emacs `org-table-number-fraction` default. */
+export const ORG_TABLE_NUMBER_FRACTION = 0.5
+
 function flattenCellText(nodes: OrgNode[]): string {
   let out = ''
   for (const node of nodes) {
@@ -129,8 +139,46 @@ function normalizeRows(rows: OrgTableRow[], cols: number): OrgTableRow[] {
 }
 
 /**
+ * Emacs org-table numeric-column decision.
+ *
+ * Non-header data cells (rows after the first hline; or all standard rows if
+ * there is no hline) decide alignment. Empty cells are ignored. A column is
+ * right-aligned when every such cell matches `ORG_TABLE_NUMBER_RE`, or when
+ * the Emacs `org-table-number-fraction` (0.5) threshold holds over those same
+ * cells — so Nest matches `org-table-align` on mixed columns too.
+ *
+ * Header rows before the first hline do not vote (unlike raw Emacs, which
+ * counts them); for typical header+hline+data tables the outcome matches
+ * Emacs because headers are non-numeric labels.
+ */
+export function isNumericColumn(rows: OrgTableRow[], col: number): boolean {
+  const firstRule = rows.findIndex((r) => r.kind === 'rule')
+  const dataRows = firstRule >= 0 ? rows.slice(firstRule + 1) : rows
+  let numbers = 0
+  let nonEmpty = 0
+  for (const row of dataRows) {
+    if (row.kind !== 'standard') continue
+    const cell = (row.cells[col] ?? '').trim()
+    if (cell === '') continue
+    nonEmpty += 1
+    if (ORG_TABLE_NUMBER_RE.test(cell)) numbers += 1
+  }
+  if (nonEmpty === 0) return false
+  if (numbers === nonEmpty) return true
+  return numbers >= ORG_TABLE_NUMBER_FRACTION * nonEmpty
+}
+
+/** Per-column alignment flags: true = right (numeric). */
+export function columnRightAlignFlags(rows: OrgTableRow[]): boolean[] {
+  const cols = columnCount(rows)
+  return Array.from({ length: cols }, (_, c) => isNumericColumn(rows, c))
+}
+
+/**
  * Serialize an Org table with Emacs-friendly column alignment.
- * Does not include a trailing blank line beyond the final table/TBLFM newline.
+ * Numeric columns (Emacs org-table rules) are right-aligned (`|  99 |`);
+ * others stay left-aligned (`padEnd`). Does not include a trailing blank
+ * line beyond the final table/TBLFM newline.
  */
 export function serializeOrgTable(rows: OrgTableRow[], tblfm = ''): string {
   const cols = columnCount(rows)
@@ -142,13 +190,18 @@ export function serializeOrgTable(rows: OrgTableRow[], tblfm = ''): string {
       widths[c] = Math.max(widths[c]!, (row.cells[c] ?? '').length)
     }
   }
+  const right = columnRightAlignFlags(normalized)
 
   const lines: string[] = []
   for (const row of normalized) {
     if (row.kind === 'rule') {
       lines.push('|' + widths.map((w) => '-'.repeat(w + 2)).join('+') + '|')
     } else {
-      const parts = row.cells.map((cell, c) => ` ${(cell ?? '').padEnd(widths[c]!)} `)
+      const parts = row.cells.map((cell, c) => {
+        const raw = cell ?? ''
+        const padded = right[c] ? raw.padStart(widths[c]!) : raw.padEnd(widths[c]!)
+        return ` ${padded} `
+      })
       lines.push('|' + parts.join('|') + '|')
     }
   }
