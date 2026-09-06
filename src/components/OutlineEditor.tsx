@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEven
 import {
   cyclePriority,
   cycleTodo,
+  drawersExpandedByDefault,
+  listDrawers,
   listHeadlines,
   listSrcBlocks,
   listTables,
   normalizeTag,
   type DateParts,
   type HeadlineView,
+  type OrgDrawerView,
   type OrgSrcBlockView,
   type OrgTableView,
   type Priority,
@@ -280,6 +283,48 @@ function isSrcHiddenByFold(
   return isBodyHiddenByFold(block.headlinePath, folded, headlines)
 }
 
+function isDrawerHiddenByFold(
+  drawer: OrgDrawerView,
+  folded: Set<string>,
+  headlines: HeadlineView[],
+): boolean {
+  return isBodyHiddenByFold(drawer.headlinePath, folded, headlines)
+}
+
+/**
+ * :PROPERTIES: and :LOGBOOK: drawers are machine bookkeeping; collapsed to a
+ * single clickable line by default (see drawersExpandedByDefault), full raw
+ * text on click. Expansion is local UI state, never written to disk.
+ */
+function DrawerBlock({
+  drawer,
+  expanded,
+  onToggle,
+}: {
+  drawer: OrgDrawerView
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const label = drawer.kind === 'properties' ? 'PROPERTIES' : 'LOGBOOK'
+  return (
+    <div className="headline-drawer">
+      <button
+        type="button"
+        className={`drawer-toggle${expanded ? ' expanded' : ''}`}
+        onClick={onToggle}
+        aria-expanded={expanded}
+        title={expanded ? `Hide :${label}:` : `Show :${label}:`}
+      >
+        <span className="drawer-chevron" aria-hidden>
+          {expanded ? '▾' : '▸'}
+        </span>
+        :{label}:
+      </button>
+      {expanded && <pre className="drawer-body">{drawer.raw}</pre>}
+    </div>
+  )
+}
+
 function isHiddenByFold(item: HeadlineView, folded: Set<string>, headlines: HeadlineView[]): boolean {
   for (const other of headlines) {
     if (!folded.has(other.id)) continue
@@ -295,6 +340,9 @@ function HeadlineRow({
   hasChildren,
   tables,
   srcBlocks,
+  drawers,
+  isDrawerExpanded,
+  onToggleDrawer,
   onToggleFold,
   onCycleTodo,
   onRename,
@@ -316,6 +364,9 @@ function HeadlineRow({
   hasChildren: boolean
   tables: OrgTableView[]
   srcBlocks: OrgSrcBlockView[]
+  drawers: Array<{ drawer: OrgDrawerView; key: string }>
+  isDrawerExpanded: (key: string) => boolean
+  onToggleDrawer: (key: string) => void
   onToggleFold: () => void
   onCycleTodo: (path: number[], next: TodoKeyword) => void
   onRename: (path: number[], title: string) => void
@@ -467,25 +518,42 @@ function HeadlineRow({
         [
           ...tables.map((table) => ({ kind: 'table' as const, start: table.start, table })),
           ...srcBlocks.map((block) => ({ kind: 'src' as const, start: block.start, block })),
+          ...drawers.map((d) => ({ kind: 'drawer' as const, start: d.drawer.start, entry: d })),
         ]
           .sort((a, b) => a.start - b.start)
-          .map((entry) => (
-            <div
-              key={entry.kind === 'table' ? `table-${entry.table.index}` : `src-${entry.block.index}`}
-              className={entry.kind === 'table' ? 'headline-table' : 'headline-src'}
-              style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}
-            >
-              {entry.kind === 'table' ? (
-                <OrgTableEditor
-                  table={entry.table}
-                  onUpdateCell={onUpdateTableCell}
-                  onAddRow={onAddTableRow}
-                />
-              ) : (
-                <OrgSrcEditor block={entry.block} onUpdateBody={onUpdateSrcBody} />
-              )}
-            </div>
-          ))}
+          .map((entry) => {
+            if (entry.kind === 'drawer') {
+              return (
+                <div
+                  key={`drawer-${entry.entry.drawer.index}`}
+                  style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}
+                >
+                  <DrawerBlock
+                    drawer={entry.entry.drawer}
+                    expanded={isDrawerExpanded(entry.entry.key)}
+                    onToggle={() => onToggleDrawer(entry.entry.key)}
+                  />
+                </div>
+              )
+            }
+            return (
+              <div
+                key={entry.kind === 'table' ? `table-${entry.table.index}` : `src-${entry.block.index}`}
+                className={entry.kind === 'table' ? 'headline-table' : 'headline-src'}
+                style={{ paddingLeft: `${(item.level - 1) * 1.25 + 1.8}rem` }}
+              >
+                {entry.kind === 'table' ? (
+                  <OrgTableEditor
+                    table={entry.table}
+                    onUpdateCell={onUpdateTableCell}
+                    onAddRow={onAddTableRow}
+                  />
+                ) : (
+                  <OrgSrcEditor block={entry.block} onUpdateBody={onUpdateSrcBody} />
+                )}
+              </div>
+            )
+          })}
     </>
   )
 }
@@ -511,14 +579,35 @@ export function OutlineEditor({
   const headlines = useMemo(() => listHeadlines(source, fileId), [source, fileId])
   const tables = useMemo(() => listTables(source), [source])
   const srcBlocks = useMemo(() => listSrcBlocks(source), [source])
+  const drawers = useMemo(() => listDrawers(source), [source])
+  const drawersExpandByDefault = useMemo(() => drawersExpandedByDefault(source), [source])
   // Fold is visibility-only — never written to disk.
   const [folded, setFolded] = useState<Set<string>>(() => new Set())
+  // Drawers start per drawersExpandByDefault; a click flips that one drawer.
+  const [toggledDrawers, setToggledDrawers] = useState<Set<string>>(() => new Set())
 
   function toggleFold(id: string) {
     setFolded((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      return next
+    })
+  }
+
+  function drawerKey(index: number): string {
+    return `${fileId}:drawer:${index}`
+  }
+
+  function isDrawerExpanded(key: string): boolean {
+    return toggledDrawers.has(key) ? !drawersExpandByDefault : drawersExpandByDefault
+  }
+
+  function toggleDrawer(key: string) {
+    setToggledDrawers((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
@@ -542,16 +631,30 @@ export function OutlineEditor({
   const rootSrc = srcBlocks.filter(
     (b) => b.headlinePath === null && !isSrcHiddenByFold(b, folded, headlines),
   )
+  const rootDrawers = drawers
+    .filter((d) => d.headlinePath === null && !isDrawerHiddenByFold(d, folded, headlines))
+    .map((drawer) => ({ drawer, key: drawerKey(drawer.index) }))
 
   return (
     <div className="outline">
       {[
         ...rootTables.map((table) => ({ kind: 'table' as const, start: table.start, table })),
         ...rootSrc.map((block) => ({ kind: 'src' as const, start: block.start, block })),
+        ...rootDrawers.map((d) => ({ kind: 'drawer' as const, start: d.drawer.start, entry: d })),
       ]
         .sort((a, b) => a.start - b.start)
-        .map((entry) =>
-          entry.kind === 'table' ? (
+        .map((entry) => {
+          if (entry.kind === 'drawer') {
+            return (
+              <DrawerBlock
+                key={`root-drawer-${entry.entry.drawer.index}`}
+                drawer={entry.entry.drawer}
+                expanded={isDrawerExpanded(entry.entry.key)}
+                onToggle={() => toggleDrawer(entry.entry.key)}
+              />
+            )
+          }
+          return entry.kind === 'table' ? (
             <OrgTableEditor
               key={`root-table-${entry.table.index}`}
               table={entry.table}
@@ -564,8 +667,8 @@ export function OutlineEditor({
               block={entry.block}
               onUpdateBody={onUpdateSrcBody}
             />
-          ),
-        )}
+          )
+        })}
       {visible.map((item) => (
         <HeadlineRow
           key={item.id}
@@ -583,6 +686,15 @@ export function OutlineEditor({
               sameHeadlinePath(b.headlinePath, item.path) &&
               !isSrcHiddenByFold(b, folded, headlines),
           )}
+          drawers={drawers
+            .filter(
+              (d) =>
+                sameHeadlinePath(d.headlinePath, item.path) &&
+                !isDrawerHiddenByFold(d, folded, headlines),
+            )
+            .map((drawer) => ({ drawer, key: drawerKey(drawer.index) }))}
+          isDrawerExpanded={isDrawerExpanded}
+          onToggleDrawer={toggleDrawer}
           onToggleFold={() => toggleFold(item.id)}
           onCycleTodo={onCycleTodo}
           onRename={onRename}

@@ -1001,6 +1001,44 @@ button.tag,
   background: rgba(74, 93, 78, 0.03);
 }
 
+/* B4 — collapsed :PROPERTIES:/:LOGBOOK: drawers */
+.headline-drawer {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.drawer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  background: transparent;
+  padding: 0.05rem 0.2rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.drawer-toggle:hover,
+.drawer-toggle.expanded {
+  color: var(--accent);
+}
+
+.drawer-chevron {
+  font-size: 0.6rem;
+}
+
+.drawer-body {
+  margin: 0.2rem 0 0 1.1rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
 /* Slice 3 — transparent Org tables */
 .headline-table {
   margin: 0.15rem 0 0.55rem;

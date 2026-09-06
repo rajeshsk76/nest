@@ -16,6 +16,8 @@ export {
   updateTableCellInSource,
   addTableRowInSource,
 } from "./org-tables"
+export type { DrawerKind, OrgDrawerView } from "./org-drawers"
+export { listDrawers, drawersExpandedByDefault } from "./org-drawers"
 export type { OrgSrcBlockView } from "./org-src"
 export {
   listSrcBlocks,
