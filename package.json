@@ -6,6 +6,7 @@
   "description": "Org mode for people who won't install Emacs.",
   "scripts": {
     "postinstall": "node scripts/ensure-sample-orgs.mjs",
+    "prepare": "node scripts/install-git-hooks.mjs",
     "predev": "node scripts/ensure-sample-orgs.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:vite": "node scripts/free-port.mjs && vite --host 0.0.0.0 --port 5173 --strictPort",
@@ -51,5 +52,6 @@
     "typescript": "~5.8.3",
     "vite": "^8.2.2",
     "vitest": "^3.2.4"
-  }
+  },
+  "license": "GPL-3.0-or-later"
 }

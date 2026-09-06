@@ -147,6 +147,10 @@ src-tauri/            # Tauri 2 shell (Rust)
 
 Created fresh (not cloned). Init git, commit, add the GitHub remote for rajeshsk76/nest, then publish.
 
+## Git hooks
+
+`prepare` sets `core.hooksPath` to `.githooks` so a normal install enables the local pre-commit gate. The hook runs `conformance:zero-edit` and fails closed (non-zero exit) if the gate fails.
+
 ## License
 
-MIT for Nest app code. uniorg packages are GPL-3.0-or-later.
+Nest is licensed under GPL-3.0-or-later (see `LICENSE`). uniorg packages are also GPL-3.0-or-later — Nest and its Org deps now align.
