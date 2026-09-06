@@ -7,6 +7,7 @@ import {
   type TodayFilters,
   type TodayItem,
 } from '../lib/org'
+import { MarkupText } from './MarkupText'
 
 const FILTER_STORAGE_KEY = 'nest.today.filters.v1'
 
@@ -188,7 +189,7 @@ export function TodayView({ files, onMarkDone, onSetPriority }: TodayViewProps) 
                     </button>
                   )
                 )}
-                <span className="today-title">{item.title}</span>
+                <span className="today-title"><MarkupText text={item.title} /></span>
                 {item.tags.map((tag) => (
                   <button
                     key={tag}
