@@ -46,6 +46,9 @@ function runEmacs(fixture) {
     '  (defun nest-fixed-now ()\n' +
     `    (encode-time 0 ${NOW.minute} ${NOW.hour} ${NOW.day} ${NOW.month} ${NOW.year} t))\n` +
     "  (advice-add 'current-time :override #'nest-fixed-now)\n" +
+    "  (advice-add 'format-time-string :around\n" +
+    "    (lambda (orig fmt &optional time zone)\n" +
+    "      (funcall orig fmt (or time (nest-fixed-now)) zone)))\n" +
     "  (advice-add 'org-current-effective-time :override #'nest-fixed-now)\n" +
     "  (advice-add 'org-today :override (lambda () (time-to-days (current-time))))\n" +
     `  (find-file ${JSON.stringify(inFile)})\n` +
