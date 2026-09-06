@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Org oracle package
+        run: bash scripts/ci-install-emacs.sh
+      - name: Install JS deps
+        run: bash scripts/ci-js-deps.sh
+      - name: Unit tests
+        run: npm test
+      - name: Emacs repeater oracle
+        run: npm run test:emacs-oracle
+      - name: Emacs table oracle
+        run: npm run test:emacs-table-oracle
+      - name: Emacs corpus conformance
+        run: npm run conformance:emacs-corpus
